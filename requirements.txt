@@ -2,4 +2,6 @@ fastapi
 openai
 pinecone
 pyodbc
+python-multipart
+reportlab
 uvicorn[standard]

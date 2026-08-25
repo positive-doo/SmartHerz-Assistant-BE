@@ -10,6 +10,7 @@ RUN apt-get update \
        curl \
        gnupg \
        ca-certificates \
+       fonts-dejavu-core \
        unixodbc \
        unixodbc-dev \
   && curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
