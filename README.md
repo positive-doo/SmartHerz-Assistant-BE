@@ -9,7 +9,7 @@ at `/docs` when the service is running.
 | --- | --- | --- |
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
-| `POST` | `/api/chat` | Minimal chatbot pipeline validation endpoint. |
+| `POST` | `/api/chat` | Answers a prompt and uses AgroTour search when the question is about tourism businesses or packages. |
 
 ## Environment
 
@@ -29,7 +29,11 @@ variables can be exported in the shell before starting Uvicorn.
 | `MSSQL_TRUST_SERVER_CERTIFICATE` | No | SQL Server certificate trust setting. Default: `yes`. |
 | `PINECONE_API_KEY` | For Pinecone check | Pinecone API key. |
 | `PINECONE_INDEX` | No | Optional Pinecone index to describe during status checks. |
-| `OPENAI_API_KEY` | No | OpenAI API key for optional API status check. |
+| `OPENAI_API_KEY` | For chat | OpenAI API key. |
+| `OPENAI_MODEL` | No | Model used by the assistant. Default: `gpt-5-mini`. |
+| `AGROTOUR_API_KEY` | For AgroTour search | Partner key sent in the `X-API-Key` header. |
+| `AGROTOUR_SEARCH_URL` | No | Search endpoint. Default: `https://dev.agrotour.eu/api/v1/search`. |
+| `CORS_ORIGINS` | No | Comma-separated frontend origins. Defaults to local port `3000`. |
 
 ## Local Run
 
@@ -38,6 +42,15 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Example request:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/api/chat `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"query":"Preporuči mi restoran u Trebinju"}'
 ```
 
 ## Docker
