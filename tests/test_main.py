@@ -24,7 +24,8 @@ class SmartHerzApiTests(unittest.TestCase):
     def test_chat_contract_and_cookie_history(self) -> None:
         histories = []
 
-        def fake_answer(query, history=None):
+        def fake_answer(query, history=None, filters=None):
+            del filters
             histories.append(copy.deepcopy(history or []))
             return f"Odgovor: {query}"
 
@@ -43,6 +44,62 @@ class SmartHerzApiTests(unittest.TestCase):
                 {"role": "assistant", "content": "Odgovor: Prvo pitanje"},
             ],
         )
+
+    def test_chat_accepts_and_forwards_frontend_filters(self) -> None:
+        captured_filters = []
+
+        def fake_answer(query, history=None, filters=None):
+            del query, history
+            captured_filters.append(filters)
+            return "Filtriran odgovor"
+
+        with patch("main.answer_query", side_effect=fake_answer):
+            response = self.client.post(
+                "/api/chat",
+                json={
+                    "query": "Napravi plan putovanja",
+                    "filters": {
+                        "dateRange": {
+                            "start": "2026-09-01",
+                            "end": "2026-09-03",
+                        },
+                        "destinations": ["trebinje"],
+                        "interests": ["wineries_tasting_rooms"],
+                    },
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["response"], "Filtriran odgovor")
+        self.assertEqual(captured_filters[0].destinations, ["trebinje"])
+        self.assertEqual(captured_filters[0].interests, ["wineries_tasting_rooms"])
+        self.assertEqual(captured_filters[0].dateRange.start, "2026-09-01")
+
+    def test_structured_filters_are_added_to_model_instructions(self) -> None:
+        response = SimpleNamespace(output=[], output_text="Plan je spreman.")
+        responses = Mock()
+        responses.create.return_value = response
+        openai_client = Mock(responses=responses)
+        filters = main.ChatFilters(
+            dateRange=main.DateRangeFilter(
+                start="2026-09-01",
+                end="2026-09-03",
+            ),
+            destinations=["trebinje"],
+            interests=["wineries_tasting_rooms"],
+        )
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}),
+            patch("main.OpenAI", return_value=openai_client),
+            patch("main.get_assistant_instructions", return_value="instructions"),
+        ):
+            result = main.answer_query("Napravi plan", filters=filters)
+
+        self.assertEqual(result, "Plan je spreman.")
+        instructions = responses.create.call_args.kwargs["instructions"]
+        self.assertIn('"destinations": ["trebinje"]', instructions)
+        self.assertIn('"start": "2026-09-01"', instructions)
 
     def test_agrotour_function_receives_original_user_prompt(self) -> None:
         first_response = SimpleNamespace(
