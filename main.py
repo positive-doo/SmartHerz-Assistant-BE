@@ -41,6 +41,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from hybrid_search import search_knowledge
+from link_validation import sanitize_tool_result
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -477,6 +478,7 @@ def answer_query(
             tool_result = search_knowledge(query)
         else:
             continue
+        tool_result = sanitize_tool_result(tool_result)
         input_items.append(
             {
                 "type": "function_call_output",

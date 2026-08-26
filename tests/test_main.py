@@ -1,4 +1,5 @@
 import copy
+import json
 import os
 import unittest
 from types import SimpleNamespace
@@ -163,6 +164,39 @@ class SmartHerzApiTests(unittest.TestCase):
         search.assert_called_once_with(user_prompt)
         function_output = responses.create.call_args_list[1].kwargs["input"][-1]
         self.assertEqual(function_output["call_id"], "call-knowledge")
+
+    def test_tool_results_are_sanitized_before_model_synthesis(self) -> None:
+        first_response = SimpleNamespace(
+            output=[
+                SimpleNamespace(
+                    type="function_call",
+                    name="search_agrotour",
+                    call_id="call-links",
+                    arguments="{}",
+                )
+            ],
+            output_text="",
+        )
+        final_response = SimpleNamespace(output=[], output_text="Provjeren odgovor.")
+        responses = Mock()
+        responses.create.side_effect = [first_response, final_response]
+        openai_client = Mock(responses=responses)
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}),
+            patch("main.OpenAI", return_value=openai_client),
+            patch("main.get_assistant_instructions", return_value="instructions"),
+            patch(
+                "main.search_agrotour",
+                return_value={"website": "https://example.test/missing"},
+            ),
+            patch("main.sanitize_tool_result", return_value={}) as sanitize,
+        ):
+            main.answer_query("Preporuči restoran")
+
+        sanitize.assert_called_once_with({"website": "https://example.test/missing"})
+        function_output = responses.create.call_args_list[1].kwargs["input"][-1]
+        self.assertEqual(json.loads(function_output["output"]), {})
 
     def test_tts_uses_latest_answer_without_frontend_changes(self) -> None:
         with patch("main.answer_query", return_value="Poslednji odgovor asistenta"):
