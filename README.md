@@ -46,7 +46,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `PINECONE_API_KEY` | For Pinecone check | Pinecone API key. |
 | `PINECONE_INDEX` | No | Optional index to describe during status checks. Hybrid search uses `neo-positive`. |
 | `BM25_STATS_PATH` | For hybrid search | Path to the non-committed `smartherz` BM25 statistics JSON. |
-| `BM25_STATS_URL` | Alternative for hybrid search | Private deployment URL for the same JSON; used only when no path is set. |
+| `BM25_STATS_URL` | Alternative for hybrid search | Private read-only URL for the same JSON; used only when no path is set. |
 | `OPENAI_API_KEY` | For chat | OpenAI API key. |
 | `OPENAI_MODEL` | No | Model used by the assistant. Default: `gpt-5-mini`. |
 | `TTS_MODEL` | No | Speech model. Default: `gpt-4o-mini-tts`. |
@@ -59,6 +59,10 @@ variables can be exported in the shell before starting Uvicorn.
 | `APP_ID` | No | SmartHerz application ID for prompts and feedback. Default: `66`. |
 | `CLIENT_ID` | No | SmartHerz client ID. Default: `18`. |
 | `PDF_FONT_PATH` | No | Optional Unicode TrueType font path for PDF rendering. |
+
+For Azure Container Apps, store the private BM25 URL as a secret (for example,
+`bm25-stats-url`) and map `BM25_STATS_URL` to that secret during deployment.
+Never commit the URL or its SAS token.
 
 ## Local Run
 
