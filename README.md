@@ -11,7 +11,7 @@ Swagger is available at `/docs` when the service is running.
 | --- | --- | --- |
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
-| `POST` | `/api/chat` | Answers a prompt and uses AgroTour when the model needs business or package data. |
+| `POST` | `/api/chat` | Answers a prompt and uses local AgroTour and knowledge-search tools when needed. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
 | `POST` | `/tts` | Creates MP3 speech for supplied text or the latest assistant response. |
 | `POST` | `/transcribe` | Transcribes the frontend's audio upload. |
@@ -39,7 +39,9 @@ variables can be exported in the shell before starting Uvicorn.
 | `MSSQL_ENCRYPT` | No | SQL Server encryption setting. Default: `yes`. |
 | `MSSQL_TRUST_SERVER_CERTIFICATE` | No | SQL Server certificate trust setting. Default: `yes`. |
 | `PINECONE_API_KEY` | For Pinecone check | Pinecone API key. |
-| `PINECONE_INDEX` | No | Optional Pinecone index to describe during status checks. |
+| `PINECONE_INDEX` | No | Optional index to describe during status checks. Hybrid search uses `neo-positive`. |
+| `BM25_STATS_PATH` | For hybrid search | Path to the non-committed `smartherz` BM25 statistics JSON. |
+| `BM25_STATS_URL` | Alternative for hybrid search | Private deployment URL for the same JSON; used only when no path is set. |
 | `OPENAI_API_KEY` | For chat | OpenAI API key. |
 | `OPENAI_MODEL` | No | Model used by the assistant. Default: `gpt-5-mini`. |
 | `TTS_MODEL` | No | Speech model. Default: `gpt-4o-mini-tts`. |

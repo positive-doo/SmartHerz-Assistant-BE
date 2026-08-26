@@ -133,6 +133,37 @@ class SmartHerzApiTests(unittest.TestCase):
         self.assertEqual(function_output["type"], "function_call_output")
         self.assertEqual(function_output["call_id"], "call-1")
 
+    def test_knowledge_function_receives_original_user_prompt(self) -> None:
+        first_response = SimpleNamespace(
+            output=[
+                SimpleNamespace(
+                    type="function_call",
+                    name="search_knowledge",
+                    call_id="call-knowledge",
+                    arguments='{"prompt":"rewritten prompt"}',
+                )
+            ],
+            output_text="",
+        )
+        final_response = SimpleNamespace(output=[], output_text="Trebinje ima Stari grad.")
+        responses = Mock()
+        responses.create.side_effect = [first_response, final_response]
+        openai_client = Mock(responses=responses)
+        user_prompt = "Šta obići u Trebinju?"
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}),
+            patch("main.OpenAI", return_value=openai_client),
+            patch("main.get_assistant_instructions", return_value="instructions"),
+            patch("main.search_knowledge", return_value={"results": []}) as search,
+        ):
+            result = main.answer_query(user_prompt)
+
+        self.assertEqual(result, "Trebinje ima Stari grad.")
+        search.assert_called_once_with(user_prompt)
+        function_output = responses.create.call_args_list[1].kwargs["input"][-1]
+        self.assertEqual(function_output["call_id"], "call-knowledge")
+
     def test_tts_uses_latest_answer_without_frontend_changes(self) -> None:
         with patch("main.answer_query", return_value="Poslednji odgovor asistenta"):
             chat_response = self.client.post("/api/chat", json={"query": "Pitanje"})
