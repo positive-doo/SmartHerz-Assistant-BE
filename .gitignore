@@ -150,6 +150,8 @@ activemq-data/
 # Environments
 .env
 .envrc
+*.yaml
+*.yml
 bm25_stats.json
 .venv
 env/
