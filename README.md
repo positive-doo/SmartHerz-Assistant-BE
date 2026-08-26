@@ -12,6 +12,7 @@ Swagger is available at `/docs` when the service is running.
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
 | `POST` | `/api/chat` | Answers a prompt and uses local AgroTour and knowledge-search tools when needed. |
+| `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
 | `POST` | `/tts` | Creates MP3 speech for supplied text or the latest assistant response. |
 | `POST` | `/transcribe` | Transcribes the frontend's audio upload. |
@@ -21,6 +22,10 @@ Swagger is available at `/docs` when the service is running.
 `/api/chat` sets an HTTP-only session cookie. SmartHerz-FE already sends
 requests with `credentials: "include"`, so conversation history works without
 changes to the frontend source.
+
+`/api/chat/stream` accepts the same JSON body and emits `data:` events with
+`content` and `done` fields. The original JSON endpoint remains available for
+backward compatibility.
 
 ## Environment
 

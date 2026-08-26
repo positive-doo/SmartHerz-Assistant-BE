@@ -198,6 +198,104 @@ class SmartHerzApiTests(unittest.TestCase):
         function_output = responses.create.call_args_list[1].kwargs["input"][-1]
         self.assertEqual(json.loads(function_output["output"]), {})
 
+    def test_answer_query_stream_yields_openai_deltas_after_tool_use(self) -> None:
+        first_response = SimpleNamespace(
+            output=[
+                SimpleNamespace(
+                    type="function_call",
+                    name="search_agrotour",
+                    call_id="call-stream",
+                    arguments="{}",
+                )
+            ],
+            output_text="",
+        )
+
+        class FakeStream:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return None
+
+            def __iter__(self):
+                return iter(
+                    [
+                        SimpleNamespace(type="response.output_text.delta", delta="Prvi"),
+                        SimpleNamespace(type="response.output_text.delta", delta=" dio"),
+                    ]
+                )
+
+            def get_final_response(self):
+                return SimpleNamespace(output_text="Prvi dio")
+
+        responses = Mock()
+        responses.create.return_value = first_response
+        responses.stream.return_value = FakeStream()
+        openai_client = Mock(responses=responses)
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}),
+            patch("main.OpenAI", return_value=openai_client),
+            patch("main.get_assistant_instructions", return_value="instructions"),
+            patch("main.search_agrotour", return_value={"data": []}),
+        ):
+            deltas = list(main.answer_query_stream("Preporuči restoran"))
+
+        self.assertEqual(deltas, ["Prvi", " dio"])
+        self.assertEqual(responses.stream.call_args.kwargs["tool_choice"], "none")
+
+    def test_stream_endpoint_emits_cumulative_sse_and_saves_history(self) -> None:
+        with patch("main.answer_query_stream", return_value=iter(["Prvi", " dio"])):
+            response = self.client.post(
+                "/api/chat/stream",
+                json={
+                    "query": "Pitanje",
+                    "filters": {"destinations": ["trebinje"]},
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
+        events = [
+            json.loads(block.removeprefix("data: "))
+            for block in response.text.strip().split("\n\n")
+        ]
+        self.assertEqual(
+            events,
+            [
+                {"content": "Prvi", "done": False},
+                {"content": "Prvi dio", "done": False},
+                {"content": "Prvi dio", "done": True},
+            ],
+        )
+        session_id = response.cookies[main.CHAT_SESSION_COOKIE]
+        session = main._sessions[session_id]
+        self.assertEqual(session.latest_assistant_text, "Prvi dio")
+        self.assertEqual(session.messages[-1]["content"], "Prvi dio")
+
+    def test_stream_endpoint_reports_failure_without_saving_partial_text(self) -> None:
+        def failing_stream(*args, **kwargs):
+            del args, kwargs
+            yield "Djelimično"
+            raise RuntimeError("provider failed")
+
+        with patch("main.answer_query_stream", side_effect=failing_stream):
+            response = self.client.post(
+                "/api/chat/stream",
+                json={"query": "Pitanje"},
+            )
+
+        events = [
+            json.loads(block.removeprefix("data: "))
+            for block in response.text.strip().split("\n\n")
+        ]
+        self.assertEqual(events[0], {"content": "Djelimično", "done": False})
+        self.assertEqual(events[-1]["done"], True)
+        self.assertIn("error", events[-1])
+        session_id = response.cookies[main.CHAT_SESSION_COOKIE]
+        self.assertEqual(main._sessions[session_id].messages, [])
+
     def test_tts_uses_latest_answer_without_frontend_changes(self) -> None:
         with patch("main.answer_query", return_value="Poslednji odgovor asistenta"):
             chat_response = self.client.post("/api/chat", json={"query": "Pitanje"})

@@ -7,6 +7,7 @@ import re
 import sys
 import threading
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,6 +30,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pinecone import Pinecone
 from pydantic import BaseModel, Field
@@ -437,11 +439,11 @@ def _filter_instructions(filters: ChatFilters | None) -> str:
     )
 
 
-def answer_query(
+def _prepare_answer(
     query: str,
     history: list[dict[str, str]] | None = None,
     filters: ChatFilters | None = None,
-) -> str:
+) -> tuple[OpenAI, str, list, str | None]:
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not _configured(openai_api_key):
         raise RuntimeError("OPENAI_API_KEY is not configured.")
@@ -464,9 +466,7 @@ def answer_query(
     tool_calls = [item for item in response.output if item.type == "function_call"]
 
     if not tool_calls:
-        if not response.output_text:
-            raise RuntimeError("The model returned an empty response.")
-        return response.output_text
+        return client, instructions, input_items, response.output_text
 
     input_items.extend(response.output)
     for tool_call in tool_calls:
@@ -487,6 +487,24 @@ def answer_query(
             }
         )
 
+    return client, instructions, input_items, None
+
+
+def answer_query(
+    query: str,
+    history: list[dict[str, str]] | None = None,
+    filters: ChatFilters | None = None,
+) -> str:
+    client, instructions, input_items, direct_text = _prepare_answer(
+        query,
+        history,
+        filters,
+    )
+    if direct_text is not None:
+        if not direct_text:
+            raise RuntimeError("The model returned an empty response.")
+        return direct_text
+
     final_response = client.responses.create(
         model=OPENAI_MODEL,
         instructions=instructions,
@@ -498,6 +516,44 @@ def answer_query(
     if not final_response.output_text:
         raise RuntimeError("The model returned an empty response after tool use.")
     return final_response.output_text
+
+
+def answer_query_stream(
+    query: str,
+    history: list[dict[str, str]] | None = None,
+    filters: ChatFilters | None = None,
+) -> Iterator[str]:
+    client, instructions, input_items, direct_text = _prepare_answer(
+        query,
+        history,
+        filters,
+    )
+    if direct_text is not None:
+        if not direct_text:
+            raise RuntimeError("The model returned an empty response.")
+        yield direct_text
+        return
+
+    streamed_text = ""
+    with client.responses.stream(
+        model=OPENAI_MODEL,
+        instructions=instructions,
+        input=input_items,
+        tools=ASSISTANT_TOOLS,
+        tool_choice="none",
+        store=False,
+    ) as stream:
+        for event in stream:
+            if event.type == "response.output_text.delta" and event.delta:
+                streamed_text += event.delta
+                yield event.delta
+        final_response = stream.get_final_response()
+
+    if not streamed_text and final_response.output_text:
+        yield final_response.output_text
+        streamed_text = final_response.output_text
+    if not streamed_text:
+        raise RuntimeError("The model returned an empty streamed response.")
 
 
 def _valid_session_id(value: str | None) -> str | None:
@@ -540,6 +596,24 @@ def _set_session_cookie(response: Response, session_id: str) -> None:
         secure=secure,
         samesite="none" if secure else "lax",
     )
+
+
+def _store_session_turn(session: ChatSession, query: str, assistant_text: str) -> None:
+    with _sessions_lock:
+        session.messages.extend(
+            [
+                {"role": "user", "content": query},
+                {"role": "assistant", "content": assistant_text},
+            ]
+        )
+        session.messages = session.messages[-MAX_HISTORY_MESSAGES:]
+        session.latest_assistant_text = assistant_text
+        session.expires_at = time() + CHAT_SESSION_TTL_SECONDS
+
+
+def _sse_event(payload: dict) -> str:
+    data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return f"data: {data}\n\n"
 
 
 def _prepare_text_for_tts(value: str) -> str:
@@ -723,16 +797,7 @@ def chat(payload: ChatRequest, request: Request, response: Response) -> dict[str
             detail="The assistant is temporarily unavailable.",
         ) from exc
 
-    with _sessions_lock:
-        session.messages.extend(
-            [
-                {"role": "user", "content": payload.query},
-                {"role": "assistant", "content": assistant_text},
-            ]
-        )
-        session.messages = session.messages[-MAX_HISTORY_MESSAGES:]
-        session.latest_assistant_text = assistant_text
-        session.expires_at = time() + CHAT_SESSION_TTL_SECONDS
+    _store_session_turn(session, payload.query, assistant_text)
 
     _set_session_cookie(response, session_id)
     return {
@@ -740,6 +805,51 @@ def chat(payload: ChatRequest, request: Request, response: Response) -> dict[str
         "query": payload.query,
         "response": assistant_text,
     }
+
+
+@app.post("/api/chat/stream")
+def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
+    session_id, session = _session_from_request(request)
+    history = list(session.messages)
+
+    def events() -> Iterator[str]:
+        assistant_text = ""
+        try:
+            for delta in answer_query_stream(
+                payload.query,
+                history=history,
+                filters=payload.filters,
+            ):
+                assistant_text += delta
+                yield _sse_event(
+                    {"content": assistant_text, "done": False}
+                )
+            if not assistant_text:
+                raise RuntimeError("The model returned an empty streamed response.")
+            _store_session_turn(session, payload.query, assistant_text)
+            yield _sse_event({"content": assistant_text, "done": True})
+        except GeneratorExit:
+            raise
+        except Exception:  # The response has started, so report errors in-band.
+            logger.exception("Streaming chat request failed")
+            yield _sse_event(
+                {
+                    "error": "The assistant is temporarily unavailable.",
+                    "done": True,
+                }
+            )
+
+    response = StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+    _set_session_cookie(response, session_id)
+    return response
 
 
 @app.post("/tts")
