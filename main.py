@@ -175,7 +175,7 @@ class ChatFilters(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    query: str = Field(..., min_length=1, max_length=500)
+    query: str = Field(..., min_length=1, max_length=20_000)
     filters: ChatFilters | None = None
 
 

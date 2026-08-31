@@ -274,6 +274,14 @@ class SmartHerzApiTests(unittest.TestCase):
         self.assertEqual(session.latest_assistant_text, "Prvi dio")
         self.assertEqual(session.messages[-1]["content"], "Prvi dio")
 
+    def test_stream_endpoint_accepts_frontend_quiz_context(self) -> None:
+        query = "Pitanje\n\nKontekst kviza putnika:\n" + "x" * 600
+
+        with patch("main.answer_query_stream", return_value=iter(["Odgovor"])):
+            response = self.client.post("/api/chat/stream", json={"query": query})
+
+        self.assertEqual(response.status_code, 200)
+
     def test_stream_endpoint_reports_failure_without_saving_partial_text(self) -> None:
         def failing_stream(*args, **kwargs):
             del args, kwargs
