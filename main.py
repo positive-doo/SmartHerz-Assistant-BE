@@ -654,52 +654,144 @@ def _insert_feedback(payload: FeedbackRequest) -> int:
         return feedback_id
 
 
-def _pdf_font_name() -> str:
-    configured_path = os.getenv("PDF_FONT_PATH")
-    candidates = [
-        configured_path,
-        "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/segoeui.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+def _pdf_font_names() -> tuple[str, str]:
+    configured_regular_path = os.getenv("PDF_FONT_PATH")
+    configured_bold_path = os.getenv("PDF_FONT_BOLD_PATH")
+
+    font_pairs = [
+        (
+            configured_regular_path,
+            configured_bold_path,
+        ),
+        (
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/arialbd.ttf",
+        ),
+        (
+            "C:/Windows/Fonts/segoeui.ttf",
+            "C:/Windows/Fonts/segoeuib.ttf",
+        ),
+        (
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ),
     ]
-    for candidate in candidates:
-        if candidate and Path(candidate).is_file():
-            if "SmartHerzUnicode" not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(TTFont("SmartHerzUnicode", candidate))
-            return "SmartHerzUnicode"
-    return "Helvetica"
+
+    for regular_path, bold_path in font_pairs:
+        if (
+            regular_path
+            and bold_path
+            and Path(regular_path).is_file()
+            and Path(bold_path).is_file()
+        ):
+            if "SmartHerzRegular" not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(
+                    TTFont("SmartHerzRegular", regular_path)
+                )
+
+            if "SmartHerzBold" not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(
+                    TTFont("SmartHerzBold", bold_path)
+                )
+
+            # VAŽNO:
+            # ReportLab preko ovog mappinga zna da <b>...</b>
+            # treba da koristi SmartHerzBold.
+            pdfmetrics.registerFontFamily(
+                "SmartHerzRegular",
+                normal="SmartHerzRegular",
+                bold="SmartHerzBold",
+                italic="SmartHerzRegular",
+                boldItalic="SmartHerzBold",
+            )
+
+            return "SmartHerzRegular", "SmartHerzBold"
+
+    return "Helvetica", "Helvetica-Bold"
+
+
+def _markdown_inline_to_reportlab(text: str) -> str:
+    formatted = html.escape(text, quote=True)
+
+    # Markdown link:
+    # [Vijećnica](https://example.com)
+    formatted = re.sub(
+        r"\[([^\]]+)\]\((https?://[^)\s]+)\)",
+        r'<a href="\2">\1</a>',
+        formatted,
+    )
+
+    # Bold:
+    # **tekst**
+    formatted = re.sub(
+        r"\*\*(.+?)\*\*",
+        r"<b>\1</b>",
+        formatted,
+    )
+
+    # Bold:
+    # __tekst__
+    formatted = re.sub(
+        r"__(.+?)__",
+        r"<b>\1</b>",
+        formatted,
+    )
+
+    # Italic:
+    # *tekst*
+    formatted = re.sub(
+        r"(?<!\*)\*([^*\n]+)\*(?!\*)",
+        r"<i>\1</i>",
+        formatted,
+    )
+
+    # Italic:
+    # _tekst_
+    formatted = re.sub(
+        r"(?<!_)_([^_\n]+)_(?!_)",
+        r"<i>\1</i>",
+        formatted,
+    )
+
+    return formatted
 
 
 def markdown_to_pdf_bytes(markdown_text: str) -> bytes:
     output = io.BytesIO()
-    font_name = _pdf_font_name()
+
+    regular_font_name, bold_font_name = _pdf_font_names()
+
     styles = getSampleStyleSheet()
+
     body = ParagraphStyle(
         "SmartHerzBody",
         parent=styles["BodyText"],
-        fontName=font_name,
+        fontName=regular_font_name,
         fontSize=10.5,
         leading=15,
         spaceAfter=3 * mm,
     )
+
     heading = ParagraphStyle(
         "SmartHerzHeading",
         parent=styles["Heading1"],
-        fontName=font_name,
+        fontName=bold_font_name,
         fontSize=17,
         leading=21,
         alignment=TA_CENTER,
         spaceAfter=6 * mm,
     )
+
     subheading = ParagraphStyle(
         "SmartHerzSubheading",
         parent=styles["Heading2"],
-        fontName=font_name,
+        fontName=bold_font_name,
         fontSize=13,
         leading=17,
         spaceBefore=3 * mm,
         spaceAfter=3 * mm,
     )
+
     document = SimpleDocTemplate(
         output,
         pagesize=A4,
@@ -709,29 +801,87 @@ def markdown_to_pdf_bytes(markdown_text: str) -> bytes:
         bottomMargin=18 * mm,
         title="SmartHerz plan",
     )
+
     story = []
+
     for raw_line in markdown_text.splitlines():
         line = raw_line.strip()
+
         if not line:
             story.append(Spacer(1, 2 * mm))
             continue
 
-        safe_line = html.escape(line)
-        if line.startswith("# "):
-            story.append(Paragraph(html.escape(line[2:].strip()), heading))
-        elif re.match(r"^#{2,6}\s+", line):
-            text = re.sub(r"^#{2,6}\s+", "", line)
-            story.append(Paragraph(html.escape(text), subheading))
-        elif re.match(r"^[-*]\s+", line):
-            text = re.sub(r"^[-*]\s+", "", line)
-            story.append(Paragraph(html.escape(text), body, bulletText="•"))
-        elif re.match(r"^\d+[.)]\s+", line):
-            marker, text = re.split(r"\s+", line, maxsplit=1)
-            story.append(Paragraph(html.escape(text), body, bulletText=html.escape(marker)))
-        else:
-            story.append(Paragraph(safe_line, body))
+        # Ne prikazuj --- kao tekst u PDF-u.
+        if line == "---":
+            story.append(Spacer(1, 3 * mm))
+            continue
 
-    document.build(story or [Paragraph("SmartHerz", body)])
+        if line.startswith("# "):
+            story.append(
+                Paragraph(
+                    _markdown_inline_to_reportlab(
+                        line[2:].strip()
+                    ),
+                    heading,
+                )
+            )
+
+        elif re.match(r"^#{2,6}\s+", line):
+            text = re.sub(
+                r"^#{2,6}\s+",
+                "",
+                line,
+            )
+
+            story.append(
+                Paragraph(
+                    _markdown_inline_to_reportlab(text),
+                    subheading,
+                )
+            )
+
+        elif re.match(r"^[-*]\s+", line):
+            text = re.sub(
+                r"^[-*]\s+",
+                "",
+                line,
+            )
+
+            story.append(
+                Paragraph(
+                    _markdown_inline_to_reportlab(text),
+                    body,
+                    bulletText="•",
+                )
+            )
+
+        elif re.match(r"^\d+[.)]\s+", line):
+            marker, text = re.split(
+                r"\s+",
+                line,
+                maxsplit=1,
+            )
+
+            story.append(
+                Paragraph(
+                    _markdown_inline_to_reportlab(text),
+                    body,
+                    bulletText=html.escape(marker),
+                )
+            )
+
+        else:
+            story.append(
+                Paragraph(
+                    _markdown_inline_to_reportlab(line),
+                    body,
+                )
+            )
+
+    document.build(
+        story or [Paragraph("SmartHerz", body)]
+    )
+
     return output.getvalue()
 
 
