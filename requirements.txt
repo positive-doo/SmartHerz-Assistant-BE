@@ -2,6 +2,7 @@ fastapi
 openai
 pinecone
 pyodbc
+docx2pdf
+python-docx
 python-multipart
-reportlab
 uvicorn[standard]

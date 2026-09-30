@@ -58,7 +58,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `CORS_ORIGINS` | No | Comma-separated frontend origins. Defaults to local port `3000`. |
 | `APP_ID` | No | SmartHerz application ID for prompts and feedback. Default: `66`. |
 | `CLIENT_ID` | No | SmartHerz client ID. Default: `18`. |
-| `PDF_FONT_PATH` | No | Optional Unicode TrueType font path for PDF rendering. |
+| `TRAVEL_PLAN_TEMPLATE_PATH` | No | Optional path to the DOCX template used for travel-plan exports. |
 
 For Azure Container Apps, store the private BM25 URL as a secret (for example,
 `bm25-stats-url`) and map `BM25_STATS_URL` to that secret during deployment.
@@ -72,6 +72,10 @@ python -m venv .venv
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+On Windows, PDF export uses `docx2pdf` and requires Microsoft Word to be
+installed. On Linux and in the provided Docker image, PDF export uses
+LibreOffice in headless mode.
 
 Example request:
 

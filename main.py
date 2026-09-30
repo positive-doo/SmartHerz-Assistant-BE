@@ -1,10 +1,10 @@
-import html
-import io
 import json
 import logging
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import threading
 import uuid
 from collections.abc import Iterator
@@ -34,13 +34,9 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pinecone import Pinecone
 from pydantic import BaseModel, Field
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from hybrid_search import search_knowledge
 from link_validation import sanitize_tool_result
@@ -86,6 +82,13 @@ CHAT_SESSION_TTL_SECONDS = 60 * 60
 MAX_CHAT_SESSIONS = 1_000
 MAX_HISTORY_MESSAGES = 20
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
+BASE_DIR = Path(__file__).resolve().parent
+TRAVEL_PLAN_TEMPLATE_PATH = Path(
+    os.getenv(
+        "TRAVEL_PLAN_TEMPLATE_PATH",
+        str(BASE_DIR / "templates" / "smartherz-memorandum.docx"),
+    )
+)
 
 DEFAULT_ASSISTANT_INSTRUCTIONS = """
 You are SmartHerz, a helpful tourism assistant for Herzegovina and Bosnia and
@@ -654,235 +657,250 @@ def _insert_feedback(payload: FeedbackRequest) -> int:
         return feedback_id
 
 
-def _pdf_font_names() -> tuple[str, str]:
-    configured_regular_path = os.getenv("PDF_FONT_PATH")
-    configured_bold_path = os.getenv("PDF_FONT_BOLD_PATH")
+_INLINE_MARKDOWN_PATTERN = re.compile(
+    r"\[([^\]]+)\]\((https?://[^)\s]+)\)"
+    r"|\*\*(.+?)\*\*"
+    r"|__(.+?)__"
+    r"|(?<!\*)\*([^*\n]+)\*(?!\*)"
+    r"|(?<!_)_([^_\n]+)_(?!_)"
+)
 
-    font_pairs = [
+
+def _word_style(document: Document, *preferred_names: str) -> str:
+    available_names = {style.name for style in document.styles}
+    for style_name in preferred_names:
+        if style_name in available_names:
+            return style_name
+    raise RuntimeError(
+        "The Word template does not contain any usable paragraph style."
+    )
+
+
+def _add_word_hyperlink(paragraph, text: str, url: str) -> None:
+    relationship_id = paragraph.part.relate_to(
+        url,
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        is_external=True,
+    )
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), relationship_id)
+
+    run = OxmlElement("w:r")
+    run_properties = OxmlElement("w:rPr")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    run_properties.extend((color, underline))
+    run.append(run_properties)
+
+    text_element = OxmlElement("w:t")
+    text_element.set(qn("xml:space"), "preserve")
+    text_element.text = text
+    run.append(text_element)
+    hyperlink.append(run)
+    paragraph._p.append(hyperlink)
+
+
+def _add_markdown_inline(paragraph, text: str) -> None:
+    position = 0
+    for match in _INLINE_MARKDOWN_PATTERN.finditer(text):
+        if match.start() > position:
+            paragraph.add_run(text[position:match.start()])
+
         (
-            configured_regular_path,
-            configured_bold_path,
-        ),
-        (
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/arialbd.ttf",
-        ),
-        (
-            "C:/Windows/Fonts/segoeui.ttf",
-            "C:/Windows/Fonts/segoeuib.ttf",
-        ),
-        (
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        ),
-    ]
+            link_text,
+            link_url,
+            bold_asterisk,
+            bold_underscore,
+            italic_asterisk,
+            italic_underscore,
+        ) = match.groups()
+        if link_text is not None:
+            _add_word_hyperlink(paragraph, link_text, link_url)
+        elif bold_asterisk is not None or bold_underscore is not None:
+            run = paragraph.add_run(bold_asterisk or bold_underscore)
+            run.bold = True
+        else:
+            run = paragraph.add_run(italic_asterisk or italic_underscore)
+            run.italic = True
+        position = match.end()
 
-    for regular_path, bold_path in font_pairs:
-        if (
-            regular_path
-            and bold_path
-            and Path(regular_path).is_file()
-            and Path(bold_path).is_file()
-        ):
-            if "SmartHerzRegular" not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(
-                    TTFont("SmartHerzRegular", regular_path)
-                )
-
-            if "SmartHerzBold" not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(
-                    TTFont("SmartHerzBold", bold_path)
-                )
-
-            # VAŽNO:
-            # ReportLab preko ovog mappinga zna da <b>...</b>
-            # treba da koristi SmartHerzBold.
-            pdfmetrics.registerFontFamily(
-                "SmartHerzRegular",
-                normal="SmartHerzRegular",
-                bold="SmartHerzBold",
-                italic="SmartHerzRegular",
-                boldItalic="SmartHerzBold",
-            )
-
-            return "SmartHerzRegular", "SmartHerzBold"
-
-    return "Helvetica", "Helvetica-Bold"
+    if position < len(text):
+        paragraph.add_run(text[position:])
 
 
-def _markdown_inline_to_reportlab(text: str) -> str:
-    formatted = html.escape(text, quote=True)
+def _clear_document_body(document: Document) -> None:
+    body = document._element.body
+    for child in list(body):
+        if child.tag != qn("w:sectPr"):
+            body.remove(child)
 
-    # Markdown link:
-    # [Vijećnica](https://example.com)
-    formatted = re.sub(
-        r"\[([^\]]+)\]\((https?://[^)\s]+)\)",
-        r'<a href="\2">\1</a>',
-        formatted,
+
+def _write_travel_plan_docx(
+    markdown_text: str,
+    output_path: Path,
+    template_path: Path = TRAVEL_PLAN_TEMPLATE_PATH,
+) -> None:
+    template_path = Path(template_path)
+    logger.info(
+        "Preparing travel plan from Word template path=%s exists=%s",
+        template_path,
+        template_path.is_file(),
     )
+    if not template_path.is_file():
+        raise RuntimeError(
+            f"Travel plan Word template was not found: {template_path}"
+        )
 
-    # Bold:
-    # **tekst**
-    formatted = re.sub(
-        r"\*\*(.+?)\*\*",
-        r"<b>\1</b>",
-        formatted,
+    document = Document(str(template_path))
+    _clear_document_body(document)
+    body_style = _word_style(document, "SmartHerz Body", "Normal")
+    day_style = _word_style(
+        document,
+        "SmartHerz Dan",
+        "Heading 1",
+        body_style,
     )
-
-    # Bold:
-    # __tekst__
-    formatted = re.sub(
-        r"__(.+?)__",
-        r"<b>\1</b>",
-        formatted,
+    period_style = _word_style(
+        document,
+        "SmartHerz Period",
+        "Heading 2",
+        body_style,
     )
-
-    # Italic:
-    # *tekst*
-    formatted = re.sub(
-        r"(?<!\*)\*([^*\n]+)\*(?!\*)",
-        r"<i>\1</i>",
-        formatted,
+    bullet_style = _word_style(
+        document,
+        "SmartHerz Bullets",
+        "SmartHerz Body",
+        "Normal",
     )
-
-    # Italic:
-    # _tekst_
-    formatted = re.sub(
-        r"(?<!_)_([^_\n]+)_(?!_)",
-        r"<i>\1</i>",
-        formatted,
-    )
-
-    return formatted
-
-
-def markdown_to_pdf_bytes(markdown_text: str) -> bytes:
-    output = io.BytesIO()
-
-    regular_font_name, bold_font_name = _pdf_font_names()
-
-    styles = getSampleStyleSheet()
-
-    body = ParagraphStyle(
-        "SmartHerzBody",
-        parent=styles["BodyText"],
-        fontName=regular_font_name,
-        fontSize=10.5,
-        leading=15,
-        spaceAfter=3 * mm,
-    )
-
-    heading = ParagraphStyle(
-        "SmartHerzHeading",
-        parent=styles["Heading1"],
-        fontName=bold_font_name,
-        fontSize=17,
-        leading=21,
-        alignment=TA_CENTER,
-        spaceAfter=6 * mm,
-    )
-
-    subheading = ParagraphStyle(
-        "SmartHerzSubheading",
-        parent=styles["Heading2"],
-        fontName=bold_font_name,
-        fontSize=13,
-        leading=17,
-        spaceBefore=3 * mm,
-        spaceAfter=3 * mm,
-    )
-
-    document = SimpleDocTemplate(
-        output,
-        pagesize=A4,
-        rightMargin=18 * mm,
-        leftMargin=18 * mm,
-        topMargin=18 * mm,
-        bottomMargin=18 * mm,
-        title="SmartHerz plan",
-    )
-
-    story = []
 
     for raw_line in markdown_text.splitlines():
         line = raw_line.strip()
-
-        if not line:
-            story.append(Spacer(1, 2 * mm))
+        if not line or line == "---":
             continue
 
-        # Ne prikazuj --- kao tekst u PDF-u.
-        if line == "---":
-            story.append(Spacer(1, 3 * mm))
-            continue
+        heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
+        bullet_match = re.match(r"^[-*•]\s+(.+)$", line)
+        numbered_match = re.match(r"^(\d+[.)])\s+(.+)$", line)
 
-        if line.startswith("# "):
-            story.append(
-                Paragraph(
-                    _markdown_inline_to_reportlab(
-                        line[2:].strip()
-                    ),
-                    heading,
-                )
+        if heading_match:
+            level = len(heading_match.group(1))
+            paragraph = document.add_paragraph(
+                style=day_style if level == 1 else period_style
             )
-
-        elif re.match(r"^#{2,6}\s+", line):
-            text = re.sub(
-                r"^#{2,6}\s+",
-                "",
-                line,
-            )
-
-            story.append(
-                Paragraph(
-                    _markdown_inline_to_reportlab(text),
-                    subheading,
-                )
-            )
-
-        elif re.match(r"^[-*]\s+", line):
-            text = re.sub(
-                r"^[-*]\s+",
-                "",
-                line,
-            )
-
-            story.append(
-                Paragraph(
-                    _markdown_inline_to_reportlab(text),
-                    body,
-                    bulletText="•",
-                )
-            )
-
-        elif re.match(r"^\d+[.)]\s+", line):
-            marker, text = re.split(
-                r"\s+",
-                line,
-                maxsplit=1,
-            )
-
-            story.append(
-                Paragraph(
-                    _markdown_inline_to_reportlab(text),
-                    body,
-                    bulletText=html.escape(marker),
-                )
-            )
-
+            content = heading_match.group(2)
+        elif bullet_match:
+            paragraph = document.add_paragraph(style=bullet_style)
+            content = bullet_match.group(1)
+        elif numbered_match:
+            paragraph = document.add_paragraph(style=body_style)
+            content = f"{numbered_match.group(1)} {numbered_match.group(2)}"
         else:
-            story.append(
-                Paragraph(
-                    _markdown_inline_to_reportlab(line),
-                    body,
-                )
+            paragraph = document.add_paragraph(style=body_style)
+            content = line
+
+        _add_markdown_inline(paragraph, content)
+
+    document.save(str(output_path))
+
+
+def _convert_docx_to_pdf(
+    docx_path: Path,
+    output_directory: Path,
+    profile_directory: Path,
+) -> Path:
+    pdf_path = output_directory / f"{docx_path.stem}.pdf"
+
+    if os.name == "nt":
+        try:
+            from docx2pdf import convert
+        except ImportError as exc:
+            raise RuntimeError(
+                "docx2pdf is required for PDF conversion on Windows."
+            ) from exc
+
+        logger.info("Converting DOCX to PDF with Microsoft Word path=%s", docx_path)
+        try:
+            convert(str(docx_path), str(pdf_path))
+        except Exception as exc:
+            logger.exception("Microsoft Word DOCX to PDF conversion failed")
+            raise RuntimeError(
+                "Microsoft Word PDF conversion failed."
+            ) from exc
+
+        if not pdf_path.is_file():
+            logger.error(
+                "Microsoft Word did not create the expected PDF path=%s",
+                pdf_path,
             )
+            raise RuntimeError(
+                "Microsoft Word did not create the expected PDF file."
+            )
+        return pdf_path
 
-    document.build(
-        story or [Paragraph("SmartHerz", body)]
-    )
+    libreoffice_binary = "libreoffice"
+    profile_directory.mkdir(parents=True, exist_ok=True)
+    command = [
+        libreoffice_binary,
+        "--headless",
+        "--nologo",
+        "--nodefault",
+        "--norestore",
+        f"-env:UserInstallation={profile_directory.resolve().as_uri()}",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        str(output_directory),
+        str(docx_path),
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+    except subprocess.TimeoutExpired as exc:
+        logger.error("LibreOffice DOCX to PDF conversion timed out")
+        raise RuntimeError("LibreOffice PDF conversion timed out.") from exc
+    except OSError as exc:
+        logger.error("LibreOffice DOCX to PDF conversion could not start: %s", exc)
+        raise RuntimeError("LibreOffice PDF conversion could not start.") from exc
 
-    return output.getvalue()
+    if result.returncode != 0:
+        logger.error(
+            "LibreOffice DOCX to PDF conversion failed return_code=%s stderr=%s",
+            result.returncode,
+            result.stderr.strip(),
+        )
+        raise RuntimeError(
+            f"LibreOffice PDF conversion failed with code {result.returncode}."
+        )
+
+    if not pdf_path.is_file():
+        logger.error(
+            "LibreOffice did not create the expected PDF path=%s stdout=%s stderr=%s",
+            pdf_path,
+            result.stdout.strip(),
+            result.stderr.strip(),
+        )
+        raise RuntimeError("LibreOffice did not create the expected PDF file.")
+    return pdf_path
+
+
+def markdown_to_pdf_bytes(markdown_text: str) -> bytes:
+    with tempfile.TemporaryDirectory(prefix="smartherz-pdf-") as temporary_directory:
+        work_directory = Path(temporary_directory)
+        docx_path = work_directory / "travel-plan.docx"
+        _write_travel_plan_docx(markdown_text, docx_path)
+        pdf_path = _convert_docx_to_pdf(
+            docx_path,
+            work_directory,
+            work_directory / "libreoffice-profile",
+        )
+        return pdf_path.read_bytes()
 
 
 def _pdf_filename(original_filename: str | None) -> str:

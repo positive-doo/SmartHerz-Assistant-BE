@@ -1,11 +1,15 @@
 import copy
 import json
 import os
+import tempfile
 import unittest
+import zipfile
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
+from lxml import etree
 
 import main
 
@@ -364,18 +368,181 @@ class SmartHerzApiTests(unittest.TestCase):
         self.assertEqual(insert.call_args.args[0].lastQuestion, "Pitanje")
 
     def test_pdf_contract_and_unicode(self) -> None:
-        response = self.client.post(
-            "/save_pdf",
-            data={
-                "markdownText": "# Plan putovanja\n\n- Trebinje\n- Međugorje",
-                "original_filename": "Moj plan.pdf",
-            },
-        )
+        def fake_convert(docx_path, output_directory, profile_directory):
+            del profile_directory
+            self.assertTrue(docx_path.is_file())
+            pdf_path = output_directory / f"{docx_path.stem}.pdf"
+            pdf_path.write_bytes(b"%PDF-1.7\n%%EOF")
+            return pdf_path
+
+        with patch("main._convert_docx_to_pdf", side_effect=fake_convert):
+            response = self.client.post(
+                "/save_pdf",
+                data={
+                    "markdownText": "# Plan putovanja\n\n- Trebinje\n- Međugorje",
+                    "original_filename": "Moj plan.pdf",
+                },
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF-"))
         self.assertIn("Moj-plan.pdf", response.headers["content-disposition"])
+
+    def test_word_template_content_styles_and_header_are_preserved(self) -> None:
+        markdown_text = """# Dan 1 – Stari grad i centar Trebinja
+
+## Jutro
+
+- Šetnja kroz Stari grad Kastel
+- Obilazak Trga slobode
+
+## Popodne
+
+- Šetnja uz Trebišnjicu
+
+Praktično: Većinu centra možete obići pješke.
+"""
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_path = Path(temporary_directory) / "plan.docx"
+            main._write_travel_plan_docx(markdown_text, output_path)
+            document = main.Document(str(output_path))
+
+            self.assertEqual(
+                [
+                    (paragraph.text, paragraph.style.name)
+                    for paragraph in document.paragraphs
+                ],
+                [
+                    ("Dan 1 – Stari grad i centar Trebinja", "SmartHerz Dan"),
+                    ("Jutro", "SmartHerz Period"),
+                    ("Šetnja kroz Stari grad Kastel", "SmartHerz Bullets"),
+                    ("Obilazak Trga slobode", "SmartHerz Bullets"),
+                    ("Popodne", "SmartHerz Period"),
+                    ("Šetnja uz Trebišnjicu", "SmartHerz Bullets"),
+                    (
+                        "Praktično: Većinu centra možete obići pješke.",
+                        "Normal",
+                    ),
+                ],
+            )
+            with (
+                zipfile.ZipFile(main.TRAVEL_PLAN_TEMPLATE_PATH) as template_zip,
+                zipfile.ZipFile(output_path) as output_zip,
+            ):
+                self.assertEqual(
+                    etree.tostring(
+                        etree.fromstring(output_zip.read("word/header1.xml")),
+                        method="c14n",
+                    ),
+                    etree.tostring(
+                        etree.fromstring(template_zip.read("word/header1.xml")),
+                        method="c14n",
+                    ),
+                )
+                self.assertEqual(
+                    output_zip.read("word/media/image1.png"),
+                    template_zip.read("word/media/image1.png"),
+                )
+
+    def test_word_inline_markdown_and_real_hyperlink(self) -> None:
+        markdown_text = (
+            "Obiđite **Stari grad**, _Trebišnjicu_ i "
+            "[turistički portal](https://example.com)."
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_path = Path(temporary_directory) / "inline.docx"
+            main._write_travel_plan_docx(markdown_text, output_path)
+            document = main.Document(str(output_path))
+            paragraph = document.paragraphs[0]
+
+            self.assertTrue(
+                any(
+                    run.text == "Stari grad" and run.bold
+                    for run in paragraph.runs
+                )
+            )
+            self.assertTrue(
+                any(
+                    run.text == "Trebišnjicu" and run.italic
+                    for run in paragraph.runs
+                )
+            )
+            relationships = document.part.rels.values()
+            self.assertTrue(
+                any(
+                    relationship.target_ref == "https://example.com"
+                    for relationship in relationships
+                )
+            )
+
+    def test_libreoffice_conversion_uses_isolated_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            work_directory = Path(temporary_directory)
+            docx_path = work_directory / "travel-plan.docx"
+            docx_path.write_bytes(b"test-docx")
+
+            def fake_run(command, **kwargs):
+                self.assertEqual(command[0], "libreoffice")
+                self.assertEqual(kwargs["timeout"], 90)
+                self.assertIn("--headless", command)
+                self.assertIn("--nologo", command)
+                self.assertIn("--nodefault", command)
+                self.assertIn("--norestore", command)
+                self.assertIn("--convert-to", command)
+                self.assertIn("pdf", command)
+                self.assertTrue(
+                    any(
+                        argument.startswith("-env:UserInstallation=file:")
+                        for argument in command
+                    )
+                )
+                pdf_path = work_directory / "travel-plan.pdf"
+                pdf_path.write_bytes(b"%PDF-1.7\n%%EOF")
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+            with (
+                patch("main.os.name", "posix"),
+                patch("main.subprocess.run", side_effect=fake_run),
+            ):
+                result = main._convert_docx_to_pdf(
+                    docx_path,
+                    work_directory,
+                    work_directory / "profile",
+                )
+
+            self.assertEqual(result.read_bytes(), b"%PDF-1.7\n%%EOF")
+
+    def test_windows_conversion_uses_docx2pdf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            work_directory = Path(temporary_directory)
+            docx_path = work_directory / "travel-plan.docx"
+            docx_path.write_bytes(b"test-docx")
+
+            def fake_convert(source, destination):
+                self.assertEqual(source, str(docx_path))
+                self.assertEqual(
+                    destination,
+                    str(work_directory / "travel-plan.pdf"),
+                )
+                (work_directory / "travel-plan.pdf").write_bytes(
+                    b"%PDF-1.7\n%%EOF"
+                )
+
+            with (
+                patch("main.os.name", "nt"),
+                patch("docx2pdf.convert", side_effect=fake_convert) as convert,
+                patch("main.subprocess.run") as subprocess_run,
+            ):
+                result = main._convert_docx_to_pdf(
+                    docx_path,
+                    work_directory,
+                    work_directory / "profile",
+                )
+
+            convert.assert_called_once()
+            subprocess_run.assert_not_called()
+            self.assertEqual(result.read_bytes(), b"%PDF-1.7\n%%EOF")
 
     def test_initialize_session_matches_frontend_body(self) -> None:
         response = self.client.post(

@@ -11,6 +11,7 @@ RUN apt-get update \
        gnupg \
        ca-certificates \
        fonts-dejavu-core \
+       libreoffice-writer \
        unixodbc \
        unixodbc-dev \
   && curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
