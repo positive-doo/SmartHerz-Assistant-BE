@@ -11,7 +11,7 @@ Swagger is available at `/docs` when the service is running.
 | --- | --- | --- |
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
-| `GET` | `/api/v1/integration/tourism` | Demo tourism catalogue and live WordPress events; integration API key required. |
+| `GET` | `/api/v1/integration/tourism` | Demo POIs and live WordPress destinations, routes and events; integration API key required. |
 | `GET` | `/api/v1/integration/kpis` | Aggregated recorded SQL sessions for an inclusive UTC date range; integration API key required. |
 | `POST` | `/api/chat` | Answers a prompt and uses local AgroTour and knowledge-search tools when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
@@ -62,7 +62,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `CLIENT_ID` | No | SmartHerz client ID. Default: `18`. |
 | `TRAVEL_PLAN_TEMPLATE_PATH` | No | Optional path to the DOCX template used for travel-plan exports. |
 | `INTEGRATION_API_KEY` | For SMART ERA endpoints | Static key accepted in the `X-API-Key` header. |
-| `INTEGRATION_TOURISM_DEMO` | For local tourism demo | Set `true` to enable demo POIs, destinations and routes; disabled by default. |
+| `INTEGRATION_TOURISM_DEMO` | For local tourism demo | Set `true` to enable demo POIs while the CSV source is pending; disabled by default. |
 | `INTEGRATION_EVENTS_URL` | No | WordPress MEC collection URL; defaults to the public SmartHerz portal. |
 
 For Azure Container Apps, store the private BM25 URL as a secret (for example,

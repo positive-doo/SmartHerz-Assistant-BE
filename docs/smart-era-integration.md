@@ -1,8 +1,8 @@
 # SMART-HERZ / SMART ERA integracija
 
-Lokalno implementirana dva GET endpointa. KPI koristi stvarni SQL. Tourism trenutno koristi demo POI-je, destinacije i rute, uz stvarne događaje iz WordPress-a. Konačno povezivanje POI izvora čeka zvanične CSV URL-ove i stabilne ID-jeve.
+Lokalno implementirana dva GET endpointa. KPI koristi stvarni SQL. Tourism koristi stvarne osnovne podatke osam destinacija, pet ruta i događaje iz WordPress-a. Demo ostaju samo dva POI-ja, dok ne stignu zvanični CSV URL-ovi i stabilni ID-jevi.
 
-Osnovni podaci osam destinacija i pet ruta (`id`, naziv, `slug`, URL) već su dostupni kroz javni WordPress `/wp-json/wp/v2/pages`. Za te podatke nije potreban novi WordPress endpoint niti administrativni pristup. Opisi na Divi stranicama nisu strukturisani kao izdvojeni opisi destinacija/ruta; neke stranice imaju prazno telo. Trenutna implementacija i dalje koristi dogovoreni demo katalog. Povezivanje osnovnih stvarnih destinacija/ruta može koristiti postojeći API, dok CSV ostaje potreban za POI podatke i liste lokacija po rutama.
+Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url` i `category=destination`; rute `id`, `name` i `url`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. CSV ostaje potreban za stvarne POI podatke i liste lokacija po rutama.
 
 ## Pokretanje lokalno
 
@@ -31,7 +31,7 @@ X-API-Key: <integration-api-key>
 | Promenljiva | Značenje |
 | --- | --- |
 | `INTEGRATION_API_KEY` | Jedan statičan ključ za oba endpointa; obavezan. |
-| `INTEGRATION_TOURISM_DEMO` | Postaviti `true` za lokalni demo katalog. Podrazumevano je isključen. |
+| `INTEGRATION_TOURISM_DEMO` | Postaviti `true` za lokalne demo POI-je dok CSV nije povezan. Podrazumevano je isključen. |
 | `INTEGRATION_EVENTS_URL` | Opcionalno; podrazumevano `https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events`. |
 
 Nedostajući/pogrešan ključ vraća 401. Ako integration ključ nije konfigurisan, vraća se 503. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
@@ -40,7 +40,7 @@ Nedostajući/pogrešan ključ vraća 401. Ako integration ključ nije konfiguris
 
 `GET /api/v1/integration/tourism`
 
-Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. `places` trenutno sadrži osam demo destinacija i dva demo POI-ja, a `routes` jednu demo rutu. Demo ID-jevi imaju prefiks `demo_`, a nazivi oznaku `DEMO`. Događaji imaju stvarne WordPress ID-jeve sa prefiksom `event_`. Zaglavlje odgovora `X-SmartHerz-Data-Mode: demo-catalogue-live-events` označava ovaj privremeni način rada.
+Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. `places` sadrži osam stvarnih destinacija i dva demo POI-ja, a `routes` pet stvarnih ruta. WordPress ID-jevi dobijaju prefikse `destination_`, `route_` i `event_`; samo demo POI-jevi imaju prefiks `demo_` i oznaku `DEMO` u nazivu. Zaglavlje odgovora `X-SmartHerz-Data-Mode: demo-pois-live-wordpress` označava ovaj privremeni način rada.
 
 Osnovna polja zapisa su `id`, `name`, opciono `description` i `url`. `places` ima i `category` (`destination` za opštine) i opcioni `slug`. Događaji imaju dostupne `start_date` i `end_date` u formatu `YYYY-MM-DD`; to su lokalni datumi portala `Europe/Sarajevo`, bez izmišljanja vremena početka. HTML naslova/opisa pretvara se u običan tekst. Nepopunjena tourism polja se izostavljaju.
 
@@ -50,11 +50,11 @@ Skraćen primer:
 {
   "generated_at": "2026-10-13T08:00:00Z",
   "places": [
-    {"id": "demo_destination_trebinje", "name": "DEMO – Trebinje", "category": "destination", "slug": "trebinje", "description": "Demo zapis za lokalno testiranje integracije."},
+    {"id": "destination_347", "name": "Trebinje", "category": "destination", "slug": "trebinje", "url": "https://smart-herz.modoos.rs/destinacije/trebinje/"},
     {"id": "demo_poi_001", "name": "DEMO – Turistička lokacija 1", "category": "cultural_heritage", "description": "Izmišljeni POI za proveru JSON odgovora."}
   ],
   "routes": [
-    {"id": "demo_route_001", "name": "DEMO – Tematska ruta", "description": "Izmišljena ruta za lokalno testiranje."}
+    {"id": "route_1590", "name": "Staza ukusa – Istočna Hercegovina", "url": "https://smart-herz.modoos.rs/tematske-rute/staza-ukusa-istocna-hercegovina/"}
   ],
   "events": [
     {"id": "event_1153", "name": "Dabarska kotlićijada", "url": "https://smart-herz.modoos.rs/events/dabarska-kotlicijada/", "start_date": "2027-06-06", "end_date": "2027-06-06"}
@@ -62,9 +62,9 @@ Skraćen primer:
 }
 ```
 
-Svaki poziv preuzima sve WordPress stranice događaja i proverava broj zapisa prema `X-WP-Total`, kao i jedinstvenost ID-jeva. Neuspešno preuzimanje, nepotpun spisak ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Bez eksplicitnog demo režima, tourism vraća 503 dok stvarni izvori nisu povezani.
+Svaki poziv preuzima osnovne podatke 13 poznatih stranica destinacija/ruta i sve WordPress stranice događaja. Proverava broj zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun spisak ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Bez eksplicitnog demo režima, tourism vraća 503 dok stvarni POI izvor nije povezan.
 
-SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju. Demo katalog služi za lokalni razvoj i nije spreman za produkcionu sinhronizaciju. Osnovne destinacije/rute moguće je povezati sa postojećim WordPress API-jem; nakon dobijanja CSV izvora treba povezati stvarne POI podatke, potvrditi stabilne ID-jeve i proveriti kompletan izvoz.
+SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju. Odgovor koji sadrži demo POI-je služi za lokalni razvoj i nije spreman za produkcionu sinhronizaciju. Nakon dobijanja CSV izvora treba povezati stvarne POI podatke, potvrditi stabilne ID-jeve i proveriti kompletan izvoz. Geometrija ruta, redosled stanica i opisi koji nisu strukturisani ne izmišljaju se.
 
 ## KPI statistika
 

@@ -1,17 +1,6 @@
 {
   "places": [
-    {"id": "demo_destination_trebinje", "name": "DEMO – Trebinje", "category": "destination", "slug": "trebinje", "description": "Demo zapis za lokalno testiranje integracije."},
-    {"id": "demo_destination_bileca", "name": "DEMO – Bileća", "category": "destination", "slug": "bileca"},
-    {"id": "demo_destination_berkovici", "name": "DEMO – Berkovići", "category": "destination", "slug": "berkovici"},
-    {"id": "demo_destination_kalinovik", "name": "DEMO – Kalinovik", "category": "destination", "slug": "kalinovik"},
-    {"id": "demo_destination_nevesinje", "name": "DEMO – Nevesinje", "category": "destination", "slug": "nevesinje"},
-    {"id": "demo_destination_gacko", "name": "DEMO – Gacko", "category": "destination", "slug": "gacko"},
-    {"id": "demo_destination_ljubinje", "name": "DEMO – Ljubinje", "category": "destination", "slug": "ljubinje"},
-    {"id": "demo_destination_istocni_mostar", "name": "DEMO – Istočni Mostar", "category": "destination", "slug": "istocni-mostar"},
     {"id": "demo_poi_001", "name": "DEMO – Turistička lokacija 1", "category": "cultural_heritage", "description": "Izmišljeni POI za proveru JSON odgovora."},
     {"id": "demo_poi_002", "name": "DEMO – Turistička lokacija 2", "category": "nature"}
-  ],
-  "routes": [
-    {"id": "demo_route_001", "name": "DEMO – Tematska ruta", "description": "Izmišljena ruta za lokalno testiranje."}
   ]
 }

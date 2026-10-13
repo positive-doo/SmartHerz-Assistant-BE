@@ -22,6 +22,16 @@ class IntegrationTests(unittest.TestCase):
         self.addCleanup(self.environment.stop)
         self.client = TestClient(main.app)
         self.headers = {"X-API-Key": "local-integration-test-key"}
+        self.destinations = [main.IntegrationPlace(
+            id=f"destination_{page_id}", name=f"Destination {page_id}", category="destination",
+            slug=f"destination-{page_id}", url=f"https://example.test/destination/{page_id}",
+        ) for page_id in main._INTEGRATION_DESTINATION_PAGE_IDS]
+        self.routes = [main.IntegrationRoute(
+            id=f"route_{page_id}", name=f"Route {page_id}", url=f"https://example.test/route/{page_id}",
+        ) for page_id in main._INTEGRATION_ROUTE_PAGE_IDS]
+        self.pages_patch = patch("main._fetch_integration_pages", return_value=(self.destinations, self.routes))
+        self.pages_mock = self.pages_patch.start()
+        self.addCleanup(self.pages_patch.stop)
         self.kpis = "/api/v1/integration/kpis?date_from=2026-10-01&date_to=2026-10-07"
         self.sql_context = MagicMock()
         self.connection = self.sql_context.__enter__.return_value
@@ -57,6 +67,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(raised.exception.status_code, 401)
             sql.assert_not_called()
             wordpress.assert_not_called()
+            self.pages_mock.assert_not_called()
 
     def test_unconfigured_key_returns_503(self):
         with patch.dict(os.environ, {"INTEGRATION_API_KEY": ""}), patch("main._sql_connection") as sql:
@@ -128,14 +139,15 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(len(body["places"]), 10)
-        self.assertEqual(len(body["routes"]), 1)
-        self.assertTrue(all(item["id"].startswith("demo_") for item in body["places"] + body["routes"]))
+        self.assertEqual(len(body["routes"]), 5)
+        self.assertEqual(sum(item["id"].startswith("demo_") for item in body["places"]), 2)
+        self.assertTrue(all(item["id"].startswith("route_") for item in body["routes"]))
         self.assertEqual([event["id"] for event in body["events"]], ["event_3", "event_4", "event_5"])
         self.assertEqual(body["events"][0]["name"], "Događaj & kultura")
         self.assertEqual(body["events"][0]["description"], "Opis događaja.")
         self.assertEqual(body["events"][0]["start_date"], "2026-10-15")
         self.assertIsNotNone(datetime.fromisoformat(body["generated_at"]).utcoffset())
-        self.assertEqual(response.headers["X-SmartHerz-Data-Mode"], "demo-catalogue-live-events")
+        self.assertEqual(response.headers["X-SmartHerz-Data-Mode"], "demo-pois-live-wordpress")
         requested_pages = [parse_qs(urlsplit(call.args[0].full_url).query)["page"] for call in wordpress.call_args_list]
         self.assertEqual(requested_pages, [["1"], ["2"]])
 
@@ -146,7 +158,54 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(first["places"], second["places"])
         self.assertEqual(first["routes"], second["routes"])
         self.assertNotIn("description", first["places"][1])
-        self.assertNotIn("url", first["places"][0])
+        self.assertNotIn("url", first["places"][-1])
+
+    def raw_pages(self):
+        rows = [{
+            "id": int(record.id.split("_", 1)[1]),
+            "title": {"rendered": f"<b>{record.name}</b> &amp; portal"},
+            "slug": getattr(record, "slug", None) or "route-slug",
+            "link": record.url,
+            "content": {"rendered": "Divi content should not become a destination description."},
+        } for record in self.destinations + self.routes]
+        return sorted(rows, key=lambda row: row["id"])
+
+    def test_live_pages_replace_demo_destinations_and_routes(self):
+        self.pages_patch.stop()
+        with patch("main.urlopen", side_effect=[self.wp_response(self.raw_pages()), self.wp_response([])]) as wordpress:
+            response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body["places"]), 10)
+        self.assertEqual(len(body["routes"]), 5)
+        destinations = [row for row in body["places"] if row["category"] == "destination"]
+        self.assertEqual({row["id"] for row in destinations}, {row.id for row in self.destinations})
+        self.assertEqual({row["id"] for row in body["routes"]}, {row.id for row in self.routes})
+        self.assertEqual(destinations[0]["name"], "Destination 347 & portal")
+        self.assertEqual(destinations[0]["slug"], "destination-347")
+        self.assertEqual(destinations[0]["url"], "https://example.test/destination/347")
+        self.assertNotIn("description", destinations[0])
+        self.assertTrue(all("url" in row for row in body["routes"]))
+        query = parse_qs(urlsplit(wordpress.call_args_list[0].args[0].full_url).query)
+        self.assertEqual(query["_fields"], ["id,title,slug,link"])
+        self.assertEqual(set(map(int, query["include"][0].split(","))),
+                         set(main._INTEGRATION_DESTINATION_PAGE_IDS + main._INTEGRATION_ROUTE_PAGE_IDS))
+
+    def test_missing_required_destination_or_route_never_returns_partial_success(self):
+        self.pages_patch.stop()
+        for missing_id in [347, 1590]:
+            rows = [row for row in self.raw_pages() if row["id"] != missing_id]
+            with self.subTest(missing_id=missing_id), patch("main.urlopen", return_value=self.wp_response(rows)) as wordpress:
+                response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+                self.assertEqual(response.status_code, 503)
+                self.assertNotIn("places", response.json())
+                self.assertEqual(wordpress.call_count, 1)
+
+    def test_pages_source_failure_returns_503(self):
+        self.pages_patch.stop()
+        with patch("main.urlopen", side_effect=URLError("pages unavailable")):
+            response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(response.status_code, 503)
 
     def test_zero_published_events_is_a_valid_empty_collection(self):
         with patch("main.urlopen", return_value=self.wp_response([], pages=0)):

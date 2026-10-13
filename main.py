@@ -351,23 +351,28 @@ def _integration_text(value: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", value))).strip()
 
 
-def _fetch_integration_events() -> list[IntegrationEvent]:
-    url = os.getenv(
-        "INTEGRATION_EVENTS_URL",
-        "https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events",
-    )
-    events = []
+_INTEGRATION_DESTINATION_PAGE_IDS = (347, 967, 1082, 1416, 2451, 2453, 2455, 2457)
+_INTEGRATION_ROUTE_PAGE_IDS = (1590, 1699, 1968, 2010, 2144)
+
+
+def _fetch_integration_wordpress(
+    url: str, fields: str, include_ids: tuple[int, ...] | None = None,
+) -> list[dict]:
+    records = []
     expected_total = 0
     page = 1
     total_pages = 1
     while page <= total_pages:
-        query = urlencode({
+        params = {
             "per_page": 100,
             "page": page,
             "orderby": "id",
             "order": "asc",
-            "_fields": "id,title,content,link,mec_start_date,mec_end_date",
-        })
+            "_fields": fields,
+        }
+        if include_ids is not None:
+            params["include"] = ",".join(map(str, include_ids))
+        query = urlencode(params)
         request = UrlRequest(
             f"{url}?{query}",
             headers={"Accept": "application/json", "User-Agent": "SmartHerz-integration/1.0"},
@@ -380,20 +385,51 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
                 if total_pages < 0 or expected_total < 0 or (total_pages == 0 and rows):
                     raise ValueError("Invalid WordPress pagination.")
         if not isinstance(rows, list):
-            raise ValueError("Invalid WordPress event collection.")
-        for row in rows:
-            events.append(IntegrationEvent(
-                id=f"event_{int(row['id'])}",
-                name=_integration_text(row["title"]["rendered"]),
-                description=_integration_text(row.get("content", {}).get("rendered", "")) or None,
-                url=row["link"],
-                start_date=row.get("mec_start_date") or None,
-                end_date=row.get("mec_end_date") or None,
-            ))
+            raise ValueError("Invalid WordPress collection.")
+        records.extend(rows)
         page += 1
-    if len(events) != expected_total or len({event.id for event in events}) != len(events):
-        raise ValueError("Incomplete WordPress event collection or duplicate IDs.")
-    return events
+    ids = {int(row["id"]) for row in records}
+    if len(records) != expected_total or len(ids) != len(records):
+        raise ValueError("Incomplete WordPress collection or duplicate IDs.")
+    if include_ids is not None and ids != set(include_ids):
+        raise ValueError("Required WordPress pages are missing.")
+    return records
+
+
+def _fetch_integration_pages() -> tuple[list[IntegrationPlace], list[IntegrationRoute]]:
+    rows = _fetch_integration_wordpress(
+        "https://smart-herz.modoos.rs/wp-json/wp/v2/pages",
+        "id,title,slug,link",
+        _INTEGRATION_DESTINATION_PAGE_IDS + _INTEGRATION_ROUTE_PAGE_IDS,
+    )
+    destinations = []
+    routes = []
+    for row in rows:
+        page_id = int(row["id"])
+        name = _integration_text(row["title"]["rendered"])
+        if page_id in _INTEGRATION_DESTINATION_PAGE_IDS:
+            destinations.append(IntegrationPlace(
+                id=f"destination_{page_id}", name=name, category="destination",
+                slug=row["slug"], url=row["link"],
+            ))
+        else:
+            routes.append(IntegrationRoute(id=f"route_{page_id}", name=name, url=row["link"]))
+    return destinations, routes
+
+
+def _fetch_integration_events() -> list[IntegrationEvent]:
+    rows = _fetch_integration_wordpress(
+        os.getenv("INTEGRATION_EVENTS_URL", "https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events"),
+        "id,title,content,link,mec_start_date,mec_end_date",
+    )
+    return [IntegrationEvent(
+        id=f"event_{int(row['id'])}",
+        name=_integration_text(row["title"]["rendered"]),
+        description=_integration_text(row.get("content", {}).get("rendered", "")) or None,
+        url=row["link"],
+        start_date=row.get("mec_start_date") or None,
+        end_date=row.get("mec_end_date") or None,
+    ) for row in rows]
 
 
 @app.get(
@@ -402,27 +438,29 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
     response_model_exclude_none=True,
     dependencies=[Depends(_require_integration_key)],
     tags=["SMART ERA integration"],
-    summary="Tourism export (demo catalogue, live WordPress events)",
+    summary="Tourism export (demo POIs, live destinations, routes and events)",
     responses={401: {"description": "Invalid API key"}, 503: {"description": "Source unavailable"}},
 )
 def integration_tourism(response: Response) -> TourismResponse:
     if os.getenv("INTEGRATION_TOURISM_DEMO", "false").lower() != "true":
         raise HTTPException(
             status_code=503,
-            detail="Tourism catalogue sources are pending. Enable demo mode for local development.",
+            detail="Tourism POI source is pending. Enable demo mode for local development.",
         )
     try:
         demo = json.loads((BASE_DIR / "data" / "integration_tourism_demo.json").read_text(encoding="utf-8"))
+        destinations, routes = _fetch_integration_pages()
+        events = _fetch_integration_events()
         result = TourismResponse(
             generated_at=datetime.now(timezone.utc),
-            places=demo["places"],
-            routes=demo["routes"],
-            events=_fetch_integration_events(),
+            places=destinations + demo["places"],
+            routes=routes,
+            events=events,
         )
     except Exception as exc:
         logger.warning("Integration tourism source failed: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="Tourism source is temporarily unavailable.") from exc
-    response.headers["X-SmartHerz-Data-Mode"] = "demo-catalogue-live-events"
+    response.headers["X-SmartHerz-Data-Mode"] = "demo-pois-live-wordpress"
     return result
 
 
