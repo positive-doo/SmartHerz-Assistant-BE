@@ -41,9 +41,9 @@ class IntegrationTests(unittest.TestCase):
         }
 
     @staticmethod
-    def wp_response(rows, pages=1):
+    def wp_response(rows, pages=1, total=None):
         response = io.BytesIO(json.dumps(rows).encode())
-        response.headers = {"X-WP-TotalPages": str(pages)}
+        response.headers = {"X-WP-TotalPages": str(pages), "X-WP-Total": str(len(rows) if total is None else total)}
         return response
 
     def test_missing_wrong_and_unicode_keys_reject_both_endpoints_before_sources(self):
@@ -121,8 +121,8 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotIn("private", response.text)
 
     def test_tourism_includes_demo_catalogue_and_all_event_pages(self):
-        responses = [self.wp_response([self.event(3), self.event(4)], pages=2),
-                     self.wp_response([self.event(5)], pages=2)]
+        responses = [self.wp_response([self.event(3), self.event(4)], pages=2, total=3),
+                     self.wp_response([self.event(5)], pages=2, total=3)]
         with patch("main.urlopen", side_effect=responses) as wordpress:
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 200)
@@ -154,6 +154,21 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["events"], [])
 
+    def test_announced_but_missing_events_return_503(self):
+        pages = [self.wp_response([self.event(3)], pages=2, total=2),
+                 self.wp_response([], pages=2, total=2)]
+        with patch("main.urlopen", side_effect=pages):
+            response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn("events", response.json())
+
+    def test_duplicate_event_ids_return_503(self):
+        pages = [self.wp_response([self.event(3)], pages=2, total=2),
+                 self.wp_response([self.event(3)], pages=2, total=2)]
+        with patch("main.urlopen", side_effect=pages):
+            response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(response.status_code, 503)
+
     def test_demo_must_be_explicitly_enabled(self):
         for setting in ["", "false"]:
             with patch.dict(os.environ, {"INTEGRATION_TOURISM_DEMO": setting}), patch("main.urlopen") as wordpress:
@@ -169,7 +184,7 @@ class IntegrationTests(unittest.TestCase):
                 with patch("main.urlopen", **kwargs):
                     response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
                 self.assertEqual(response.status_code, 503)
-        with patch("main.urlopen", side_effect=[self.wp_response([self.event(3)], pages=2), URLError("page 2 failed")]):
+        with patch("main.urlopen", side_effect=[self.wp_response([self.event(3)], pages=2, total=2), URLError("page 2 failed")]):
             self.assertEqual(self.client.get("/api/v1/integration/tourism", headers=self.headers).status_code, 503)
         missing_pagination = self.wp_response([self.event(3)])
         missing_pagination.headers = {}

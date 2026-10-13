@@ -58,7 +58,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `AGROTOUR_API_KEY` | For AgroTour search | Partner key sent in the `X-API-Key` header. |
 | `AGROTOUR_SEARCH_URL` | No | Search endpoint. Default: `https://dev.agrotour.eu/api/v1/search`. |
 | `CORS_ORIGINS` | No | Comma-separated frontend origins. Defaults to local port `3000`. |
-| `APP_ID` | No | SmartHerz application ID for prompts and feedback. Default: `66`. |
+| `APP_ID` | No | SmartHerz application ID for prompts, feedback and KPI aggregates. Default: `66`. |
 | `CLIENT_ID` | No | SmartHerz client ID. Default: `18`. |
 | `TRAVEL_PLAN_TEMPLATE_PATH` | No | Optional path to the DOCX template used for travel-plan exports. |
 | `INTEGRATION_API_KEY` | For SMART ERA endpoints | Static key accepted in the `X-API-Key` header. |
@@ -115,26 +115,9 @@ http://localhost:8000/docs
 http://localhost:8000/healthz
 ```
 
-## GitHub Deploy Workflow
+## Deployment
 
-`.github/workflows/deploy.yml` builds the container, pushes it to Azure
-Container Registry, and creates or updates Azure Container Apps.
-
-Required repository secrets:
-
-- `AZURE_CREDENTIALS`
-- `OPENAI_API_KEY`
-- `MSSQL_HOST`
-- `MSSQL_DB`
-- `MSSQL_USER`
-- `MSSQL_PASS`
-- `PINECONE_API_KEY`
-
-Optional repository variables:
-
-- `AZURE_RESOURCE_GROUP`
-- `AZURE_LOCATION`
-- `AZURE_CONTAINER_APP_ENVIRONMENT`
-- `AZURE_CONTAINER_APP_NAME`
-- `AZURE_ACR_NAME`
-- `AZURE_IMAGE_NAME`
+This repository currently has no GitHub Actions deployment workflow. Pushing
+to `main` does not deploy the backend through a workflow in this repository.
+Updating the Azure Container App is a separate deployment step; keep service
+credentials and the integration API key in Azure secrets.

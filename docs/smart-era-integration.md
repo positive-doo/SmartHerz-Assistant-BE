@@ -1,6 +1,8 @@
 # SMART-HERZ / SMART ERA integracija
 
-Lokalno implementirana dva GET endpointa. KPI koristi stvarni SQL. Tourism trenutno koristi demo POI-je, destinacije i rute, uz stvarne događaje iz WordPress-a. Konačno povezivanje tourism izvora čeka CSV URL-ove, stabilne ID-jeve i odgovor za destinacije.
+Lokalno implementirana dva GET endpointa. KPI koristi stvarni SQL. Tourism trenutno koristi demo POI-je, destinacije i rute, uz stvarne događaje iz WordPress-a. Konačno povezivanje POI izvora čeka zvanične CSV URL-ove i stabilne ID-jeve.
+
+Osnovni podaci osam destinacija i pet ruta (`id`, naziv, `slug`, URL) već su dostupni kroz javni WordPress `/wp-json/wp/v2/pages`. Za te podatke nije potreban novi WordPress endpoint niti administrativni pristup. Opisi na Divi stranicama nisu strukturisani kao izdvojeni opisi destinacija/ruta; neke stranice imaju prazno telo. Trenutna implementacija i dalje koristi dogovoreni demo katalog. Povezivanje osnovnih stvarnih destinacija/ruta može koristiti postojeći API, dok CSV ostaje potreban za POI podatke i liste lokacija po rutama.
 
 ## Pokretanje lokalno
 
@@ -60,9 +62,9 @@ Skraćen primer:
 }
 ```
 
-Svaki poziv preuzima sve WordPress stranice događaja. Neuspešno preuzimanje ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Bez eksplicitnog demo režima, tourism vraća 503 dok stvarni izvori nisu povezani.
+Svaki poziv preuzima sve WordPress stranice događaja i proverava broj zapisa prema `X-WP-Total`, kao i jedinstvenost ID-jeva. Neuspešno preuzimanje, nepotpun spisak ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Bez eksplicitnog demo režima, tourism vraća 503 dok stvarni izvori nisu povezani.
 
-SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju. Demo katalog služi za lokalni razvoj i nije spreman za produkcionu sinhronizaciju. Nakon dobijanja stvarnih izvora treba zameniti demo učitavanje mapiranjem CSV/JSON podataka, potvrditi stabilne ID-jeve i proveriti kompletan izvoz.
+SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju. Demo katalog služi za lokalni razvoj i nije spreman za produkcionu sinhronizaciju. Osnovne destinacije/rute moguće je povezati sa postojećim WordPress API-jem; nakon dobijanja CSV izvora treba povezati stvarne POI podatke, potvrditi stabilne ID-jeve i proveriti kompletan izvoz.
 
 ## KPI statistika
 

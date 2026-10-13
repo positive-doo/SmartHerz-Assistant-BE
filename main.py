@@ -357,6 +357,7 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
         "https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events",
     )
     events = []
+    expected_total = 0
     page = 1
     total_pages = 1
     while page <= total_pages:
@@ -375,7 +376,8 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
             rows = json.load(response)
             if page == 1:
                 total_pages = int(response.headers["X-WP-TotalPages"])
-                if total_pages < 0 or (total_pages == 0 and rows):
+                expected_total = int(response.headers["X-WP-Total"])
+                if total_pages < 0 or expected_total < 0 or (total_pages == 0 and rows):
                     raise ValueError("Invalid WordPress pagination.")
         if not isinstance(rows, list):
             raise ValueError("Invalid WordPress event collection.")
@@ -389,6 +391,8 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
                 end_date=row.get("mec_end_date") or None,
             ))
         page += 1
+    if len(events) != expected_total or len({event.id for event in events}) != len(events):
+        raise ValueError("Incomplete WordPress event collection or duplicate IDs.")
     return events
 
 
