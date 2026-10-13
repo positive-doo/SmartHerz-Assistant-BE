@@ -1,3 +1,5 @@
+import hmac
+import html
 import json
 import logging
 import os
@@ -10,6 +12,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
 from time import perf_counter, time
 from typing import Literal
@@ -21,16 +24,20 @@ from urllib.request import urlopen
 import pyodbc
 from fastapi import (
     FastAPI,
+    Depends,
     File,
     Form,
     Header,
     HTTPException,
     Request,
+    Query,
     Response,
+    Security,
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.security import APIKeyHeader
 from openai import OpenAI
 from pinecone import Pinecone
 from pydantic import BaseModel, Field
@@ -200,6 +207,42 @@ class StatusResponse(BaseModel):
     environment: str
 
 
+class IntegrationPlace(BaseModel):
+    id: str
+    name: str
+    category: str
+    description: str | None = None
+    url: str | None = None
+    slug: str | None = None
+
+
+class IntegrationRoute(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    url: str | None = None
+
+
+class IntegrationEvent(IntegrationRoute):
+    start_date: date | None = None
+    end_date: date | None = None
+
+
+class TourismResponse(BaseModel):
+    generated_at: datetime
+    places: list[IntegrationPlace]
+    routes: list[IntegrationRoute]
+    events: list[IntegrationEvent]
+
+
+class KpisResponse(BaseModel):
+    date_from: date
+    date_to: date
+    ai_conversations: int
+    recommendations_generated: int | None = None
+    average_session_duration_seconds: float | None = None
+
+
 class InitSessionRequest(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=128)
 
@@ -286,6 +329,149 @@ def check_sql_database() -> str:
     except Exception as exc:  # noqa: BLE001 - status endpoint must not fail hard
         logger.warning("SQL status check failed: %s", exc)
         return "error"
+
+
+_integration_key_header = APIKeyHeader(
+    name="X-API-Key", scheme_name="IntegrationApiKey", auto_error=False
+)
+
+
+def _require_integration_key(
+    api_key: str | None = Security(_integration_key_header),
+) -> None:
+    expected = os.getenv("INTEGRATION_API_KEY")
+    if not expected or not expected.strip():
+        raise HTTPException(status_code=503, detail="Integration API key is not configured.")
+    if not api_key or not hmac.compare_digest(api_key.encode(), expected.encode()):
+        raise HTTPException(status_code=401, detail="Invalid integration API key.")
+
+
+def _integration_text(value: str) -> str:
+    value = re.sub(r"</?(?:p|div|br|li|h[1-6])\b[^>]*>", " ", value, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", value))).strip()
+
+
+def _fetch_integration_events() -> list[IntegrationEvent]:
+    url = os.getenv(
+        "INTEGRATION_EVENTS_URL",
+        "https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events",
+    )
+    events = []
+    page = 1
+    total_pages = 1
+    while page <= total_pages:
+        query = urlencode({
+            "per_page": 100,
+            "page": page,
+            "orderby": "id",
+            "order": "asc",
+            "_fields": "id,title,content,link,mec_start_date,mec_end_date",
+        })
+        request = UrlRequest(
+            f"{url}?{query}",
+            headers={"Accept": "application/json", "User-Agent": "SmartHerz-integration/1.0"},
+        )
+        with urlopen(request, timeout=20) as response:
+            rows = json.load(response)
+            if page == 1:
+                total_pages = int(response.headers["X-WP-TotalPages"])
+                if total_pages < 0 or (total_pages == 0 and rows):
+                    raise ValueError("Invalid WordPress pagination.")
+        if not isinstance(rows, list):
+            raise ValueError("Invalid WordPress event collection.")
+        for row in rows:
+            events.append(IntegrationEvent(
+                id=f"event_{int(row['id'])}",
+                name=_integration_text(row["title"]["rendered"]),
+                description=_integration_text(row.get("content", {}).get("rendered", "")) or None,
+                url=row["link"],
+                start_date=row.get("mec_start_date") or None,
+                end_date=row.get("mec_end_date") or None,
+            ))
+        page += 1
+    return events
+
+
+@app.get(
+    "/api/v1/integration/tourism",
+    response_model=TourismResponse,
+    response_model_exclude_none=True,
+    dependencies=[Depends(_require_integration_key)],
+    tags=["SMART ERA integration"],
+    summary="Tourism export (demo catalogue, live WordPress events)",
+    responses={401: {"description": "Invalid API key"}, 503: {"description": "Source unavailable"}},
+)
+def integration_tourism(response: Response) -> TourismResponse:
+    if os.getenv("INTEGRATION_TOURISM_DEMO", "false").lower() != "true":
+        raise HTTPException(
+            status_code=503,
+            detail="Tourism catalogue sources are pending. Enable demo mode for local development.",
+        )
+    try:
+        demo = json.loads((BASE_DIR / "data" / "integration_tourism_demo.json").read_text(encoding="utf-8"))
+        result = TourismResponse(
+            generated_at=datetime.now(timezone.utc),
+            places=demo["places"],
+            routes=demo["routes"],
+            events=_fetch_integration_events(),
+        )
+    except Exception as exc:
+        logger.warning("Integration tourism source failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Tourism source is temporarily unavailable.") from exc
+    response.headers["X-SmartHerz-Data-Mode"] = "demo-catalogue-live-events"
+    return result
+
+
+@app.get(
+    "/api/v1/integration/kpis",
+    response_model=KpisResponse,
+    dependencies=[Depends(_require_integration_key)],
+    tags=["SMART ERA integration"],
+    summary="Aggregate recorded SQL sessions for an inclusive UTC date range",
+    responses={401: {"description": "Invalid API key"}, 503: {"description": "SQL unavailable"}},
+)
+def integration_kpis(
+    date_from: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    date_to: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+) -> KpisResponse:
+    try:
+        start_date = date.fromisoformat(date_from)
+        end_date = date.fromisoformat(date_to)
+        if end_date < start_date:
+            raise ValueError("Reversed date range.")
+        # SQL datetime2 values use UTC without timezone offsets.
+        start = datetime.combine(start_date, datetime_time.min)
+        end = datetime.combine(end_date + timedelta(days=1), datetime_time.min)
+    except (ValueError, OverflowError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="Use valid YYYY-MM-DD dates, date_from <= date_to, and date_to < 9999-12-31.",
+        ) from exc
+    try:
+        with _sql_connection() as connection:
+            connection.timeout = 15
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT COUNT(DISTINCT thread_id),
+                    AVG(CASE WHEN closed_at >= created_at
+                        THEN CAST(DATEDIFF_BIG(millisecond, created_at, closed_at) AS float) / 1000.0
+                    END)
+                FROM chat.Threads
+                WHERE app_id = ? AND created_at >= ? AND created_at < ?
+                """,
+                APP_ID, start, end,
+            )
+            count, duration = cursor.fetchone()
+        return KpisResponse(
+            date_from=start_date,
+            date_to=end_date,
+            ai_conversations=int(count),
+            average_session_duration_seconds=float(duration) if duration is not None else None,
+        )
+    except Exception as exc:
+        logger.warning("Integration KPI query failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="KPI source is temporarily unavailable.") from exc
 
 
 def check_vector_database() -> str:
