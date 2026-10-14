@@ -36,6 +36,33 @@ X-API-Key: <integration-api-key>
 
 Nedostajući/pogrešan ključ vraća 401. Ako integration ključ nije konfigurisan, vraća se 503. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
 
+## Jednokratno preuzimanje ključa — lokalna proba
+
+Backend ima komandu za kreiranje linka i jednostavnu stranicu za preuzimanje uz PIN. Mejl sa linkom šalje operator ručno. Silo je bio samo referenca; ovo rešenje ga ne koristi.
+
+U istom okruženju u kome je već postavljen `INTEGRATION_API_KEY`, zadajte apsolutnu putanju lokalne evidencije **pre pokretanja servera**:
+
+```powershell
+$env:INTEGRATION_KEY_LINKS_DB = Join-Path $env:LOCALAPPDATA 'SmartHerz\key-links.sqlite3'
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+U drugom terminalu, sa **istim ključem i istom putanjom evidencije**, kreirajte link:
+
+```powershell
+python integration_key_links.py --base-url http://127.0.0.1:8000 --expires-hours 1
+```
+
+Komanda vraća JSON sa `url`, četvorocifrenim `pin` i `expires_at`. Rok može biti 1, 24 ili 168 sati (podrazumevano 7 dana). Link šaljite mejlom; PIN po mogućnosti drugim kanalom. Komanda predaje postojeći ključ; ne menja ga i ne štampa njegovu vrednost. Novi ključ se generiše samo kada operator namerno želi da ga postavi/zameni.
+
+- `GET /integration/key#<token>` prikazuje stranicu. Samo otvaranje/pretpregled linka ga ne troši; token iz fragmenta ne odlazi u URL serverskog zahteva.
+- Dugme šalje token i PIN na `POST /api/v1/integration/key-links/redeem`. Uspešan odgovor vraća ključ jednom; ponovni pokušaj ili istekao link vraća 410, pogrešan PIN 403. Posle pet pogrešnih PIN-ova link se poništava.
+- API ključ ostaje važeći za oba integraciona endpointa i posle iskorišćavanja linka. Promena API ključa poništava ranije linkove; oni ne otkrivaju novi ključ.
+- Evidencija čuva hash tokena, proveru PIN-a i ključa, rok i broj pokušaja. Ne čuva sam API ključ, token ili PIN. SQLite transakcija omogućava samo jedno uspešno preuzimanje čak i pri istovremenim zahtevima; stanje opstaje posle restarta procesa.
+- Bez `INTEGRATION_KEY_LINKS_DB` funkcionalnost je isključena (503). Stranica i odgovori sa ključem imaju `Cache-Control: no-store`.
+
+Ovo je lokalno testirana varijanta, bez nove biblioteke, slanja mejlova ili upisa u MSSQL. Pre Azure deploy-a mora se rešiti trajna, zajednička evidencija linkova. Lokalni SQLite fajl u kontejneru nije dovoljan za zamenu replike ili više replika; njegovo kopiranje/obnavljanje iz starog stanja može ponovo aktivirati neistekao link. Ta produkciona konfiguracija nije deo ove probe.
+
 ## Turistički podaci
 
 `GET /api/v1/integration/tourism`

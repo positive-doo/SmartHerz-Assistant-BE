@@ -46,6 +46,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from hybrid_search import search_knowledge
+from integration_key_links import router as integration_key_links_router
 from link_validation import sanitize_tool_result
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -273,6 +274,7 @@ app = FastAPI(
     title="SmartHerz Assistant Backend",
     version="0.2.0",
 )
+app.include_router(integration_key_links_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,

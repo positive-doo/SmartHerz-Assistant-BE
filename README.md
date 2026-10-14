@@ -62,6 +62,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `CLIENT_ID` | No | SmartHerz client ID. Default: `18`. |
 | `TRAVEL_PLAN_TEMPLATE_PATH` | No | Optional path to the DOCX template used for travel-plan exports. |
 | `INTEGRATION_API_KEY` | For SMART ERA endpoints | Static key accepted in the `X-API-Key` header. |
+| `INTEGRATION_KEY_LINKS_DB` | Optional, local key handover test | Absolute SQLite file path for single-use key links; disabled when absent. See integration documentation before production use. |
 | `INTEGRATION_TOURISM_DEMO` | For local tourism demo | Set `true` to enable demo POIs while the CSV source is pending; disabled by default. |
 | `INTEGRATION_EVENTS_URL` | No | WordPress MEC collection URL; defaults to the public SmartHerz portal. |
 
