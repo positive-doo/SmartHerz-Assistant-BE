@@ -10,7 +10,6 @@ import tempfile
 import threading
 import uuid
 from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
@@ -21,7 +20,6 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
-import pyodbc
 from fastapi import (
     FastAPI,
     Depends,
@@ -45,6 +43,7 @@ from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
+from database import sql_connection as _sql_connection
 from hybrid_search import search_knowledge
 from integration_key_links import router as integration_key_links_router
 from link_validation import sanitize_tool_result
@@ -73,9 +72,6 @@ AGROTOUR_SEARCH_URL = os.getenv(
 )
 APP_ID = int(os.getenv("APP_ID", "66"))
 CLIENT_ID = int(os.getenv("CLIENT_ID", "18"))
-MSSQL_DRIVER = os.getenv("MSSQL_DRIVER") or "ODBC Driver 18 for SQL Server"
-MSSQL_ENCRYPT = os.getenv("MSSQL_ENCRYPT") or "yes"
-MSSQL_TRUST_SERVER_CERTIFICATE = os.getenv("MSSQL_TRUST_SERVER_CERTIFICATE") or "yes"
 CORS_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
@@ -292,31 +288,6 @@ _prompt_cache_lock = threading.Lock()
 
 def _configured(*values: str | None) -> bool:
     return all(value and value.strip() for value in values)
-
-
-@contextmanager
-def _sql_connection():
-    host = os.getenv("MSSQL_HOST")
-    database = os.getenv("MSSQL_DB")
-    user = os.getenv("MSSQL_USER")
-    password = os.getenv("MSSQL_PASS")
-    if not _configured(host, database, user, password):
-        raise RuntimeError("SQL database is not configured.")
-
-    connection = pyodbc.connect(
-        driver=f"{{{MSSQL_DRIVER}}}",
-        server=host,
-        database=database,
-        uid=user,
-        pwd=password,
-        Encrypt=MSSQL_ENCRYPT,
-        TrustServerCertificate=MSSQL_TRUST_SERVER_CERTIFICATE,
-        timeout=10,
-    )
-    try:
-        yield connection
-    finally:
-        connection.close()
 
 
 def check_sql_database() -> str:

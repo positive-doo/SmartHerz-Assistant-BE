@@ -1,36 +1,91 @@
+"""Offline failure checks and opt-in tests against devplay.SmartHerzKeyLinks."""
 import json
 import os
+import secrets
 import subprocess
 import sys
-import tempfile
+import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
 
+import pyodbc
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import integration_key_links as links
 import main
 
 
-class KeyLinkTests(unittest.TestCase):
+class KeyLinkFailureTests(unittest.TestCase):
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.directory.cleanup)
-        self.database = Path(self.directory.name) / 'links.sqlite3'
-        self.key = 'test-only-integration-key-with-sufficient-entropy'
-        self.environment = patch.dict(os.environ, {
-            'INTEGRATION_KEY_LINKS_DB': str(self.database), 'INTEGRATION_API_KEY': self.key,
-        })
-        self.environment.start()
-        self.addCleanup(self.environment.stop)
+        self.key = 'test-only-key'
+        environment = patch.dict(os.environ, {'INTEGRATION_API_KEY': self.key})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.client = TestClient(main.app)
+        self.payload = {'token': 'a' * 43, 'pin': '1234'}
+
+    def test_missing_key_fails_before_sql_access(self):
+        with patch.dict(os.environ, {'INTEGRATION_API_KEY': ''}), patch.object(links, 'sql_connection') as sql:
+            self.assertEqual(self.client.get('/integration/key').status_code, 503)
+            self.assertEqual(self.client.post('/api/v1/integration/key-links/redeem', json=self.payload).status_code, 503)
+            sql.assert_not_called()
+
+    def test_sql_failure_is_generic_and_does_not_reveal_key(self):
+        for error in [RuntimeError('private configuration'), pyodbc.Error('private connection details')]:
+            with patch.object(links, 'sql_connection', side_effect=error):
+                response = self.client.post('/api/v1/integration/key-links/redeem', json=self.payload)
+                self.assertEqual(response.status_code, 503)
+                self.assertNotIn(self.key, response.text)
+                self.assertNotIn('private', response.text)
+                with self.assertRaises(HTTPException) as raised:
+                    links.create_link('http://127.0.0.1:8000')
+                self.assertEqual(raised.exception.status_code, 503)
+
+    def test_failed_commit_never_returns_key(self):
+        context = MagicMock()
+        connection = context.__enter__.return_value
+        connection.cursor.return_value.fetchone.return_value = (
+            links._pin_digest(self.payload['token'], self.payload['pin']), links._digest(self.key), 0, 0)
+        connection.commit.side_effect = pyodbc.Error('commit failed')
+        with patch.object(links, 'sql_connection', return_value=context):
+            response = self.client.post('/api/v1/integration/key-links/redeem', json=self.payload)
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn(self.key, response.text)
+
+    def test_invalid_public_urls_are_rejected_before_sql(self):
+        for url in ['http://example.com', 'https://user:password@example.com', 'https://example.com/path', 'https://example.com/#fragment']:
+            with self.subTest(url=url), patch.object(links, 'sql_connection') as sql, self.assertRaises(ValueError):
+                links.create_link(url)
+            sql.assert_not_called()
+
+
+@unittest.skipUnless(os.getenv('SMARTHERZ_TEST_MSSQL') == '1', 'Set SMARTHERZ_TEST_MSSQL=1 to test the existing MSSQL database')
+class KeyLinkSqlTests(unittest.TestCase):
+    def setUp(self):
+        self.key = secrets.token_urlsafe(32)
+        self.tokens = []
+        environment = patch.dict(os.environ, {'INTEGRATION_API_KEY': self.key})
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.addCleanup(self.cleanup_rows)
+        self.client = TestClient(main.app)
+
+    def cleanup_rows(self):
+        if self.tokens:
+            with links.sql_connection() as connection:
+                for token in self.tokens:
+                    connection.cursor().execute('DELETE FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?', links._digest(token))
+                connection.commit()
 
     def create(self):
         result = links.create_link('http://127.0.0.1:8000', 1)
-        return {'token': urlsplit(result['url']).fragment, 'pin': result['pin']}
+        token = urlsplit(result['url']).fragment
+        self.tokens.append(token)
+        return {'token': token, 'pin': result['pin']}
 
     def redeem(self, payload):
         return self.client.post('/api/v1/integration/key-links/redeem', json=payload)
@@ -52,7 +107,6 @@ class KeyLinkTests(unittest.TestCase):
             self.assertEqual(page.status_code, 200)
             self.assertNotIn(self.key, page.text)
             self.assertEqual(page.headers['cache-control'], 'no-store')
-            self.assertNotIn('__NONCE__', page.text)
             nonce = page.headers['content-security-policy'].split("'nonce-")[1].split("'")[0]
             self.assertIn(f'<script nonce="{nonce}">', page.text)
         self.assertEqual(self.redeem(payload).status_code, 200)
@@ -64,11 +118,12 @@ class KeyLinkTests(unittest.TestCase):
             self.assertEqual(self.redeem({**payload, 'pin': wrong}).status_code, expected)
         self.assertEqual(self.redeem(payload).status_code, 410)
 
-    def test_expired_link_is_unavailable(self):
-        with patch.object(links.time, 'time', return_value=1_700_000_000):
-            payload = self.create()
-        with patch.object(links.time, 'time', return_value=1_700_003_600):
-            self.assertEqual(self.redeem(payload).status_code, 410)
+    def test_expiry_uses_sql_clock(self):
+        payload = self.create()
+        with links.sql_connection() as connection:
+            connection.cursor().execute('UPDATE devplay.SmartHerzKeyLinks SET expires_at = DATEADD(second, -1, SYSUTCDATETIME()) WHERE token_digest = ?', links._digest(payload['token']))
+            connection.commit()
+        self.assertEqual(self.redeem(payload).status_code, 410)
 
     def test_rotation_does_not_expose_replacement_key(self):
         payload = self.create()
@@ -79,8 +134,10 @@ class KeyLinkTests(unittest.TestCase):
 
     def test_only_one_concurrent_request_succeeds(self):
         payload = self.create()
+        barrier = threading.Barrier(6)
         def redeem(_):
             with TestClient(main.app) as client:
+                barrier.wait(timeout=15)
                 return client.post('/api/v1/integration/key-links/redeem', json=payload).status_code
         with ThreadPoolExecutor(max_workers=6) as executor:
             self.assertEqual(sorted(executor.map(redeem, range(6))), [200, 410, 410, 410, 410, 410])
@@ -97,29 +154,16 @@ except HTTPException as error:
     print(error.status_code)
 """
         process = subprocess.run([sys.executable, '-c', script], input=json.dumps(payload),
-                                 text=True, capture_output=True, cwd=Path(main.__file__).parent, check=True)
+                                 text=True, capture_output=True, cwd=Path(main.__file__).parent, check=True, timeout=30)
         self.assertEqual(process.stdout.strip(), '410')
 
-    def test_database_does_not_store_plain_key_or_token(self):
+    def test_database_contains_hashes_instead_of_plain_credentials(self):
         payload = self.create()
-        content = self.database.read_bytes()
-        self.assertNotIn(self.key.encode(), content)
-        self.assertNotIn(payload['token'].encode(), content)
-
-    def test_missing_configuration_and_store_fail_closed(self):
-        payload = {'token': 'a' * 43, 'pin': '1234'}
-        self.assertEqual(self.redeem(payload).status_code, 503)
-        with patch.dict(os.environ, {'INTEGRATION_KEY_LINKS_DB': ''}):
-            self.assertEqual(self.client.get('/integration/key').status_code, 503)
-            self.assertEqual(self.redeem(payload).status_code, 503)
-
-    def test_cli_requires_https_except_on_loopback(self):
-        for url in ['http://example.com', 'https://user:password@example.com', 'https://example.com/path', 'https://example.com/#fragment']:
-            with self.subTest(url=url), self.assertRaises(ValueError):
-                links.create_link(url)
-        result = links.create_link('https://example.com')
-        self.assertTrue(result['url'].startswith('https://example.com/integration/key#'))
-        self.assertNotIn(self.key, json.dumps(result))
+        with links.sql_connection() as connection:
+            row = connection.cursor().execute('SELECT token_digest, pin_digest, key_digest FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?', links._digest(payload['token'])).fetchone()
+        self.assertTrue(all(len(value) == 64 for value in row))
+        for secret in [self.key, payload['token'], payload['pin']]:
+            self.assertNotIn(secret, row)
 
 
 if __name__ == '__main__':

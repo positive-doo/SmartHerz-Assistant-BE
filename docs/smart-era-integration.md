@@ -36,18 +36,19 @@ X-API-Key: <integration-api-key>
 
 Nedostajući/pogrešan ključ vraća 401. Ako integration ključ nije konfigurisan, vraća se 503. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
 
-## Jednokratno preuzimanje ključa — lokalna proba
+## Jednokratno preuzimanje ključa
 
 Backend ima komandu za kreiranje linka i jednostavnu stranicu za preuzimanje uz PIN. Mejl sa linkom šalje operator ručno. Silo je bio samo referenca; ovo rešenje ga ne koristi.
 
-U istom okruženju u kome je već postavljen `INTEGRATION_API_KEY`, zadajte apsolutnu putanju lokalne evidencije **pre pokretanja servera**:
+Evidencija se čuva u postojećem MSSQL-u, u jednoj tabeli **`devplay.SmartHerzKeyLinks`**. Jednom pokrenite `sql/001_smartherz_key_links.sql` u bazi koju backend koristi; skripta može bezbedno da se pokrene ponovo. Šema `devplay` mora već da postoji. Backend nalogu potrebna su prava `SELECT`, `INSERT`, `UPDATE` i `DELETE` na toj tabeli. Zahtevi aplikacije ne kreiraju tabele.
+
+Koriste se postojeći `MSSQL_*` parametri i `INTEGRATION_API_KEY`. Nema SQLite datoteke, dodatne baze ili servisa. Lokalni server pokrenite sa tim parametrima:
 
 ```powershell
-$env:INTEGRATION_KEY_LINKS_DB = Join-Path $env:LOCALAPPDATA 'SmartHerz\key-links.sqlite3'
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-U drugom terminalu, sa **istim ključem i istom putanjom evidencije**, kreirajte link:
+U drugom terminalu, sa **istim ključem i istim MSSQL parametrima**, kreirajte link:
 
 ```powershell
 python integration_key_links.py --base-url http://127.0.0.1:8000 --expires-hours 1
@@ -58,10 +59,11 @@ Komanda vraća JSON sa `url`, četvorocifrenim `pin` i `expires_at`. Rok može b
 - `GET /integration/key#<token>` prikazuje stranicu. Samo otvaranje/pretpregled linka ga ne troši; token iz fragmenta ne odlazi u URL serverskog zahteva.
 - Dugme šalje token i PIN na `POST /api/v1/integration/key-links/redeem`. Uspešan odgovor vraća ključ jednom; ponovni pokušaj ili istekao link vraća 410, pogrešan PIN 403. Posle pet pogrešnih PIN-ova link se poništava.
 - API ključ ostaje važeći za oba integraciona endpointa i posle iskorišćavanja linka. Promena API ključa poništava ranije linkove; oni ne otkrivaju novi ključ.
-- Evidencija čuva hash tokena, proveru PIN-a i ključa, rok i broj pokušaja. Ne čuva sam API ključ, token ili PIN. SQLite transakcija omogućava samo jedno uspešno preuzimanje čak i pri istovremenim zahtevima; stanje opstaje posle restarta procesa.
-- Bez `INTEGRATION_KEY_LINKS_DB` funkcionalnost je isključena (503). Stranica i odgovori sa ključem imaju `Cache-Control: no-store`.
+- Evidencija čuva hash tokena, proveru PIN-a i ključa, rok i broj pokušaja. Ne čuva sam API ključ, token ili PIN. Provera, promena broja pokušaja i brisanje rade u SQL transakciji uz `UPDLOCK, HOLDLOCK`. Ključ se vraća tek posle uspešnog commit-a. Zato samo jedan istovremeni zahtev može preuzeti ključ, uključujući zahteve različitih procesa/replika.
+- Rok se određuje i proverava prema SQL UTC vremenu (`SYSUTCDATETIME()`), a istekli zapisi se čiste pri kreiranju novog linka. Poseban zakazani posao nije potreban.
+- Ako ključ nije podešen ili SQL/tabela nisu dostupni pri kreiranju/preuzimanju, vraća se 503. Stranica i odgovori sa ključem imaju `Cache-Control: no-store`.
 
-Ovo je lokalno testirana varijanta, bez nove biblioteke, slanja mejlova ili upisa u MSSQL. Pre Azure deploy-a mora se rešiti trajna, zajednička evidencija linkova. Lokalni SQLite fajl u kontejneru nije dovoljan za zamenu replike ili više replika; njegovo kopiranje/obnavljanje iz starog stanja može ponovo aktivirati neistekao link. Ta produkciona konfiguracija nije deo ove probe.
+SQL evidencija opstaje posle restarta i zamene kontejnera. Sve Azure replike i administratorska komanda moraju koristiti istu bazu i isti `INTEGRATION_API_KEY`. API ključ se i dalje čuva kao Azure secret. Promenljiva `INTEGRATION_KEY_LINKS_DB` više se ne koristi. Ove izmene ne šalju mejlove i ne izvršavaju deploy.
 
 ## Turistički podaci
 
@@ -126,11 +128,20 @@ Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/kpis?date_from=2026-
 Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/tourism' -Headers @{'X-API-Key' = $env:INTEGRATION_API_KEY}
 ```
 
-Testovi koriste lokalne primere za WordPress i SQL odgovore, bez testnih upisa u stvarnu bazu. Razvojne zavisnosti uključuju `httpx` za TestClient.
+Podrazumevani testovi koriste lokalne primere za WordPress i SQL odgovore, bez testnih upisa u stvarnu bazu. Razvojne zavisnosti uključuju `httpx` za TestClient.
 
 ```powershell
 python -m pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
 ```
+
+Za testiranje jednokratnih linkova nad stvarnim MSSQL-om, uz postojeću tabelu i `MSSQL_*` parametre:
+
+```powershell
+$env:SMARTHERZ_TEST_MSSQL = "1"
+python -m unittest discover -s tests -v
+```
+
+Ovi dodatni testovi kreiraju privremene linkove samo u `devplay.SmartHerzKeyLinks` i čiste svoje zapise nakon provere. Pokrivaju PIN, istek, promenu ključa, ponovni pristup, novi proces i istovremene zahteve. Kreiranje linka, kao i u redovnom radu, uklanja istekle zapise iz ove tabele.
 
 Statusi: 200 uspešan odgovor; 401 autentifikacija; 422 datumi; 503 konfiguracija ili izvor nisu dostupni.
