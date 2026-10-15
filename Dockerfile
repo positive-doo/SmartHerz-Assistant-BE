@@ -23,6 +23,27 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+# Enable process-local unixODBC pooling while preserving the installed driver.
+RUN python - <<'PY'
+import configparser
+from pathlib import Path
+
+path = Path("/etc/odbcinst.ini")
+config = configparser.ConfigParser(interpolation=None)
+config.optionxform = str
+config.read(path)
+
+driver = "ODBC Driver 18 for SQL Server"
+assert config.has_section(driver), f"Missing driver: {driver}"
+if not config.has_section("ODBC"):
+    config.add_section("ODBC")
+config["ODBC"]["Pooling"] = "Yes"
+config[driver]["CPTimeout"] = "120"
+
+with path.open("w") as output:
+    config.write(output)
+PY
+
 WORKDIR /app
 
 COPY requirements.txt .

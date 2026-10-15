@@ -4,6 +4,10 @@ from contextlib import contextmanager
 
 import pyodbc
 
+# Configure the process-wide ODBC environment before opening any connection.
+pyodbc.pooling = True
+pyodbc.odbcversion = "3.8"
+
 MSSQL_DRIVER = os.getenv("MSSQL_DRIVER") or "ODBC Driver 18 for SQL Server"
 MSSQL_ENCRYPT = os.getenv("MSSQL_ENCRYPT") or "yes"
 MSSQL_TRUST_SERVER_CERTIFICATE = os.getenv("MSSQL_TRUST_SERVER_CERTIFICATE") or "yes"
