@@ -17,7 +17,7 @@ Postojeće promenljive `MSSQL_HOST`, `MSSQL_DB`, `MSSQL_USER` i `MSSQL_PASS` mor
 
 Lokalni base URL je `http://127.0.0.1:8000`. OpenAPI je na `/docs`, gde dugme **Authorize** prima partnerski API ključ preuzet jednokratnim linkom. Gornja promenljiva je interna serverska tajna; ne šalje se partnerima niti služi za autentifikaciju API poziva.
 
-Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Interna tajna čuva se kao Azure secret vezan za `INTEGRATION_KEY_SECRET`. Svaki partner ima zaseban API ključ u MSSQL evidenciji. AgroTour ključ nije ključ za ove endpoint-e.
+Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Interna tajna čuva se kao Azure secret vezan za `INTEGRATION_KEY_SECRET`. Svakim partnerskim ključem upravlja postojeći AdminApp registar u MSSQL-u. AgroTour ključ nije ključ za ove endpoint-e.
 
 ## Autentifikacija i konfiguracija
 
@@ -32,45 +32,57 @@ X-API-Key: <integration-api-key>
 | `INTEGRATION_KEY_SECRET` | Interna tajna za generisanje/predaju partnerskih ključeva; najmanje 32 nasumična znaka. Čuvati trajno i jednako na svim replikama. |
 | `INTEGRATION_EVENTS_URL` | Opcionalno; podrazumevano `https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events`. |
 
-Nedostajući, nepoznat ili ukinut ključ vraća 401. Svaki API poziv proverava hash ključa i status partnera u SQL-u, bez keširanja. Nedostupna baza vraća 503. Prethodni zajednički `INTEGRATION_API_KEY` više se ne prihvata. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
+Nedostajući, nepoznat, istekao ili ukinut ključ, kao i ključ bez integration:read dozvole, vraća 401. Svaki API poziv proverava AdminApp registar u SQL-u, bez keširanja. Nedostupna baza vraća 503. Prethodni zajednički `INTEGRATION_API_KEY` više se ne prihvata. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
 
-## Jednokratno preuzimanje ključa
+## Upravljanje ključevima i jednokratna predaja
 
-Backend ima komandu za kreiranje linka i jednostavnu stranicu za preuzimanje uz PIN. Mejl sa linkom šalje operator ručno. Silo je bio samo referenca; ovo rešenje ga ne koristi.
+Ključevi se kreiraju, rotiraju i opozivaju u **AdminApp → Administracija → API ključevi**,
+za klijenta **18** i aplikaciju **SMART-HERZ (66)**. Korisnik mora imati administratorski grant
+za tu kombinaciju klijenta i aplikacije. Naziv ključa može biti naziv partnera.
 
-Evidencija se čuva u postojećem MSSQL-u: **`devplay.SmartHerzPartners`** sadrži partnera, nasumični identifikator ključa, hash API ključa, vreme izdavanja i vreme ukidanja; postojeća **`devplay.SmartHerzKeyLinks`** čuva jednokratne linkove. Pokrenite `sql/001_smartherz_key_links.sql`, pa `sql/002_smartherz_partners.sql`. Obe skripte su bezbedne za ponovno pokretanje. Šema `devplay` mora već da postoji. Backend/operator nalogu potrebna su prava `SELECT`, `INSERT`, `UPDATE` i `DELETE` na ovim tabelama. Zahtevi aplikacije ne kreiraju tabele.
+1. **Kreiraj ključ** otvara dijalog sa jednokratnim linkom, PIN-om i rokom. Kopirajte ih/preuzmite
+   i pošaljite ručno partneru. Za SMART-HERZ se sam ključ ne prikazuje u AdminApp-u.
+2. **Novi link** daje dodatni jednokratni link za isti ključ.
+3. **Revoke / Opozovi** odmah blokira samo taj ključ i sve njegove neiskorišćene linkove.
+4. **Rotate / Rotiraj** izdaje novi ključ i link, a stari ključ i stari linkovi prestaju da važe.
 
-Koriste se postojeći `MSSQL_*` parametri i nova interna tajna `INTEGRATION_KEY_SECRET`. Nema dodatne baze, servisa niti administrativnog web endpointa. Lokalni server pokrenite sa tim parametrima:
+Jedina evidencija prava je `admin.AdminApiKeys`, uz aktivan `integration:read` scope iz
+`admin.AdminApiKeyScopes` i `admin.AdminApiKeyScopeAssignments`. Svaki API poziv proverava
+aplikaciju 66, status, opoziv, istek i dozvolu u SQL-u, bez keširanja. Nema rezervnog zajedničkog
+ključa niti dozvole koja se dobija samo postojanjem zapisa u `devplay`.
+
+Postojeće `devplay.SmartHerzPartners` zapise koristimo samo kao metapodatke za predaju ključa
+(nasumični identifikator i hash); njihovo polje `revoked_at` više ne odlučuje o pristupu.
+`devplay.SmartHerzKeyLinks` zadržava hash tokena, PIN proveru, hash ključa, istek i broj pokušaja.
+Postojeći SMART ERA ključ prenosi se u AdminApp registar sa istim hashom, a raniji linkovi ostaju
+važeći do iskorišćavanja/isteka, ako sam ključ nije opozvan ili istekao.
+
+Interna tajna `INTEGRATION_KEY_SECRET` u SMART-HERZ-u mora biti jednaka AdminApp tajni
+`SMARTHERZ_INTEGRATION_KEY_SECRET`. Čuvaju se kao Azure secrets. HMAC-SHA256 iz te tajne i
+nasumičnog identifikatora omogućava predaju istog ključa bez čuvanja čitljivih ključeva u SQL-u.
+Nema novih servisa ni tabela; SQL pooling ostaje nepromenjen. Za novu instalaciju postojeće
+`devplay` tabele kreiraju skripte 001/002 iz ovog repozitorijuma, a scope registruje
+`adminapp/sql/002_smartherz_key_delivery.sql`. Pre deploy-a SQL administrator izvršava
+`sql/003_adminapp_registry_permissions.sql`: postojećem backend nalogu dodaje samo SELECT
+nad tri AdminApp tabele. Bez tih prava provera ključeva vraća 503. Zahtevi aplikacije ne izvršavaju DDL.
+
+- Link podrazumevano važi sedam dana, najduže do isteka ključa. Token je u URL fragmentu `#...`.
+  Samo otvaranje stranice ne troši link.
+- `POST /api/v1/integration/key-links/redeem` proverava token i PIN. Uspeh vraća ključ jednom.
+  Pogrešan PIN vraća 403; posle pet pogrešnih pokušaja link se poništava. Iskorišćen, istekao ili
+  opozvan link vraća 410. SQL/konfiguraciona greška vraća 503, bez vraćanja ključa.
+- `UPDLOCK, HOLDLOCK` i commit pre odgovora čuvaju jednokratnost između različitih procesa/replika.
+  Stranica i odgovori sa ključem koriste `Cache-Control: no-store`.
+- Ključ važi posle iskorišćavanja linka, do opoziva/isteka. Zahtev već odobren pre opoziva može
+  završiti odgovor. Drugi ključevi nastavljaju da rade.
+
+Za operatora je opciono ostala komanda za novi link postojećeg AdminApp ključa, uz istu tajnu i bazu:
 
 ```powershell
-python -m uvicorn main:app --host 127.0.0.1 --port 8000
+python integration_key_links.py --key-id <api_key_id-iz-adminapp> --base-url https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io
 ```
 
-U drugom terminalu, sa **istom internom tajnom i istim MSSQL parametrima**, kreirajte partnera i prvi link:
-
-```powershell
-python integration_key_links.py create --partner smart-era --base-url http://127.0.0.1:8000 --expires-hours 1
-```
-
-Komanda vraća JSON sa `partner`, `url`, četvorocifrenim `pin` i `expires_at`, bez API ključa. Partner je jedinstvena oznaka od 1–100 malih slova, cifara, crtica ili donjih crta. Rok može biti 1, 24 ili 168 sati (podrazumevano 7 dana). Link šaljite mejlom; PIN po mogućnosti drugim kanalom.
-
-Za novi link za isti aktivni ključ i za ukidanje pristupa:
-
-```powershell
-python integration_key_links.py link --partner smart-era --base-url https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io
-python integration_key_links.py revoke --partner smart-era
-```
-
-`link` zadržava postojeći ključ. `revoke` ukida pristup samo tom partneru, uključujući sve njegove neiskorišćene linkove, bez restarta/deploy-a. Ponovljeni `revoke` je bezbedan. Za ponovno odobravanje ukinutom partneru koristite `create`: dobija novi ključ i link; stari ključ i stari linkovi ostaju nevažeći. `create` odbija partnera koji već ima aktivan ključ, da ne bi slučajno prekinuo njegovu integraciju.
-
-- `GET /integration/key#<token>` prikazuje stranicu. Samo otvaranje/pretpregled linka ga ne troši; token iz fragmenta ne odlazi u URL serverskog zahteva.
-- Dugme šalje token i PIN na `POST /api/v1/integration/key-links/redeem`. Uspešan odgovor vraća ključ jednom; ponovni pokušaj ili istekao link vraća 410, pogrešan PIN 403. Posle pet pogrešnih PIN-ova link se poništava.
-- API ključ ostaje važeći za oba integraciona endpointa i posle iskorišćavanja linka, sve dok pristup tom partneru ne bude ukinut. Ukidanje ne utiče na druge partnere. Zahtev koji je već prošao proveru pre ukidanja može završiti svoj odgovor.
-- Evidencija čuva hash tokena, proveru PIN-a i ključa, rok i broj pokušaja. Ne čuva sam API ključ, token ili PIN. Provera, promena broja pokušaja i brisanje rade u SQL transakciji uz `UPDLOCK, HOLDLOCK`. Ključ se vraća tek posle uspešnog commit-a. Zato samo jedan istovremeni zahtev može preuzeti ključ, uključujući zahteve različitih procesa/replika.
-- Rok se određuje i proverava prema SQL UTC vremenu (`SYSUTCDATETIME()`), a istekli zapisi se čiste pri kreiranju novog linka. Poseban zakazani posao nije potreban.
-- Ako interna tajna nije podešena ili SQL/tabela nisu dostupni pri kreiranju/preuzimanju, vraća se 503. Pogrešno podešena interna tajna ne troši ispravan link niti vraća drugi ključ. Stranica i odgovori sa ključem imaju `Cache-Control: no-store`.
-
-SQL evidencija opstaje posle restarta i zamene kontejnera. Sve Azure replike i administratorska komanda moraju koristiti istu bazu i istu internu tajnu `INTEGRATION_KEY_SECRET`. Partnerski ključ izvodi se preko HMAC-SHA256 iz te tajne i nasumičnog identifikatora ključa, uz posebnu oznaku namene. Tako baza ne čuva čitljive API ključeve, a novi link može predati isti aktivni ključ. Internu tajnu sačuvati u Azure secrets; njena promena zahteva ponovno izdavanje partnerskih ključeva za dalju predaju. Stari zajednički ključ i njegovi linkovi ne važe u ovom sistemu. Mejlovi se šalju ručno.
+Stare `create/link/revoke --partner` komande su zamenjene AdminApp upravljanjem.
 
 ## Turistički podaci
 
@@ -149,7 +161,7 @@ $env:SMARTHERZ_TEST_MSSQL = "1"
 python -m unittest discover -s tests -v
 ```
 
-Ovi dodatni testovi kreiraju privremene partnere/linkove samo u dve `devplay.SmartHerz*` tabele i čiste svoje zapise nakon provere. Pokrivaju odvojene ključeve, pojedinačno ukidanje, ponovno izdavanje, PIN, istek, pogrešnu internu tajnu, ponovni pristup, novi proces i istovremene zahteve. Kreiranje linka, kao i u redovnom radu, uklanja istekle linkove.
+Ovi dodatni testovi kreiraju privremene ključeve/scope veze u AdminApp registru i metapodatke/linkove u dve `devplay.SmartHerz*` tabele; čiste samo svoje zapise nakon provere. Pokrivaju odvojene ključeve, pojedinačno ukidanje, ponovno izdavanje, PIN, istek, pogrešnu internu tajnu, ponovni pristup, novi proces i istovremene zahteve. Kreiranje linka, kao i u redovnom radu, uklanja istekle linkove.
 
 Statusi: 200 uspešan odgovor; 401 autentifikacija; 422 datumi; 503 konfiguracija ili izvor nisu dostupni.
 

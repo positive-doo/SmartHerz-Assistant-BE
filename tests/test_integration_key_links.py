@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 import pyodbc
 from fastapi import HTTPException
@@ -28,15 +29,14 @@ class KeyLinkFailureTests(unittest.TestCase):
         self.key = links._partner_key(self.key_id)
         self.client = TestClient(main.app)
         self.payload = {'token': 'a' * 43, 'pin': '1234'}
+        self.key_record_id = str(uuid4())
 
     def test_missing_secret_fails_before_sql_access(self):
         with patch.dict(os.environ, {'INTEGRATION_KEY_SECRET': ''}), patch.object(links, 'sql_connection') as sql:
             self.assertEqual(self.client.get('/integration/key').status_code, 200)
             self.assertEqual(self.client.post('/api/v1/integration/key-links/redeem', json=self.payload).status_code, 503)
             with self.assertRaises(HTTPException):
-                links.create_partner('example')
-            with self.assertRaises(HTTPException):
-                links.create_link('http://127.0.0.1:8000', 'example')
+                links.create_link('http://127.0.0.1:8000', self.key_record_id)
             sql.assert_not_called()
 
     def test_sql_failure_is_generic_and_does_not_reveal_key(self):
@@ -46,8 +46,7 @@ class KeyLinkFailureTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 503)
                 self.assertNotIn(self.key, response.text)
                 self.assertNotIn('private', response.text)
-                for operation in [lambda: links.create_link('http://127.0.0.1:8000', 'example'),
-                                  lambda: links.create_partner('example'), lambda: links.revoke_partner('example'),
+                for operation in [lambda: links.create_link('http://127.0.0.1:8000', self.key_record_id),
                                   lambda: links.require_partner_key(self.key)]:
                     with self.assertRaises(HTTPException) as raised:
                         operation()
@@ -68,16 +67,15 @@ class KeyLinkFailureTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertNotIn(self.key, response.text)
 
-    def test_invalid_public_urls_and_partner_names_are_rejected_before_sql(self):
+    def test_invalid_public_urls_and_key_ids_are_rejected_before_sql(self):
         for url in ['http://example.com', 'https://user:password@example.com', 'https://example.com/path', 'https://example.com/#fragment']:
             with self.subTest(url=url), patch.object(links, 'sql_connection') as sql, self.assertRaises(ValueError):
-                links.create_link(url, 'example')
+                links.create_link(url, self.key_record_id)
             sql.assert_not_called()
         for partner in ['', 'UPPER', 'a b', 'a' * 101, "a'; DELETE"]:
-            for operation in [links.create_partner, links.revoke_partner]:
-                with patch.object(links, 'sql_connection') as sql, self.assertRaises(ValueError):
-                    operation(partner)
-                sql.assert_not_called()
+            with patch.object(links, 'sql_connection') as sql, self.assertRaises(ValueError):
+                links.create_link('http://127.0.0.1:8000', partner)
+            sql.assert_not_called()
 
     def test_legacy_shared_key_and_master_secret_are_never_accepted(self):
         with patch.dict(os.environ, {'INTEGRATION_API_KEY': 'old-shared-key'}), patch.object(links, 'sql_connection') as sql:
@@ -100,12 +98,35 @@ class KeyLinkSqlTests(unittest.TestCase):
         self.client = TestClient(main.app)
 
     def new_partner(self):
-        partner = 'test_' + secrets.token_hex(12)
+        partner = str(uuid4())
         self.partners.append(partner)
-        links.create_partner(partner)
+        key_id = secrets.token_urlsafe(32)
+        key = links._partner_key(key_id)
         with links.sql_connection() as connection:
-            key_id = connection.cursor().execute('SELECT key_id FROM devplay.SmartHerzPartners WHERE partner_id = ?', partner).fetchone()[0]
-        return partner, links._partner_key(key_id)
+            cursor = connection.cursor()
+            cursor.execute("""INSERT INTO admin.AdminApiKeys (api_key_id,app_id,name,key_prefix,key_hash,created_by,updated_by)
+                VALUES (?,66,'SMART-HERZ test',?,?,'smartherz-test','smartherz-test')""", partner, key[:16], links._digest(key))
+            cursor.execute('INSERT INTO devplay.SmartHerzPartners (partner_id,key_id,key_digest) VALUES (?,?,?)',
+                           partner, key_id, links._digest(key))
+            cursor.execute("""INSERT INTO admin.AdminApiKeyScopeAssignments (api_key_id,scope_id)
+                SELECT ?,scope_id FROM admin.AdminApiKeyScopes WHERE app_id=66 AND scope='integration:read'""", partner)
+            connection.commit()
+        return partner, key
+
+    def revoke(self, partner):
+        with links.sql_connection() as connection:
+            connection.cursor().execute('UPDATE admin.AdminApiKeys SET is_active=0,revoked_at=SYSUTCDATETIME() WHERE api_key_id=?', partner)
+            connection.commit()
+
+    def reissue(self, partner):
+        key_id = secrets.token_urlsafe(32)
+        key = links._partner_key(key_id)
+        with links.sql_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute('UPDATE admin.AdminApiKeys SET key_hash=?,is_active=1,revoked_at=NULL WHERE api_key_id=?', links._digest(key), partner)
+            cursor.execute('UPDATE devplay.SmartHerzPartners SET key_id=?,key_digest=? WHERE partner_id=?', key_id, links._digest(key), partner)
+            connection.commit()
+        return key
 
     def cleanup_rows(self):
         with links.sql_connection() as connection:
@@ -113,6 +134,8 @@ class KeyLinkSqlTests(unittest.TestCase):
             for token in self.tokens:
                 cursor.execute('DELETE FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?', links._digest(token))
             for partner in self.partners:
+                cursor.execute('DELETE FROM admin.AdminApiKeyScopeAssignments WHERE api_key_id=?', partner)
+                cursor.execute('DELETE FROM admin.AdminApiKeys WHERE api_key_id=?', partner)
                 cursor.execute('DELETE FROM devplay.SmartHerzPartners WHERE partner_id = ?', partner)
             connection.commit()
 
@@ -217,8 +240,8 @@ except HTTPException as error:
         self.assertNotEqual(self.key, other_key)
         self.assertEqual(self.auth_status(self.key), 200)
         self.assertEqual(self.auth_status(other_key), 200)
-        links.revoke_partner(self.partner)
-        links.revoke_partner(self.partner)
+        self.revoke(self.partner)
+        self.revoke(self.partner)
         self.assertEqual(self.auth_status(self.key), 401)
         self.assertEqual(self.redeem(payload).status_code, 410)
         self.assertEqual(self.auth_status(other_key), 200)
@@ -229,10 +252,8 @@ except HTTPException as error:
     def test_new_link_keeps_active_key_and_reissue_never_reactivates_old_key(self):
         old_payload = self.create()
         self.assertEqual(self.redeem(self.create()).json(), {'api_key': self.key})
-        with self.assertRaises(ValueError):
-            links.create_partner(self.partner)
-        links.revoke_partner(self.partner)
-        links.create_partner(self.partner)
+        self.revoke(self.partner)
+        self.reissue(self.partner)
         new_key = self.redeem(self.create()).json()['api_key']
         self.assertNotEqual(new_key, self.key)
         self.assertEqual(self.auth_status(self.key), 401)
@@ -247,13 +268,33 @@ except HTTPException as error:
             return self.redeem(payload).status_code
         def revoke():
             barrier.wait(timeout=15)
-            links.revoke_partner(self.partner)
+            self.revoke(self.partner)
         with ThreadPoolExecutor(max_workers=2) as executor:
             response = executor.submit(redeem)
             executor.submit(revoke).result(timeout=30)
             self.assertIn(response.result(timeout=30), [200, 410])
         self.assertEqual(self.auth_status(self.key), 401)
         self.assertEqual(self.redeem(payload).status_code, 410)
+
+    def test_adminapp_expiry_app_and_scope_are_enforced(self):
+        for mutation in [
+            'UPDATE admin.AdminApiKeys SET expires_at=DATEADD(second,-1,SYSUTCDATETIME()) WHERE api_key_id=?',
+            'UPDATE admin.AdminApiKeys SET app_id=64 WHERE api_key_id=?',
+            'DELETE FROM admin.AdminApiKeyScopeAssignments WHERE api_key_id=?',
+        ]:
+            partner, key = self.new_partner()
+            payload = self.create(partner)
+            with links.sql_connection() as connection:
+                connection.cursor().execute(mutation, partner)
+                connection.commit()
+            self.assertEqual(self.auth_status(key), 401)
+            self.assertEqual(self.redeem(payload).status_code, 410)
+
+    def test_legacy_delivery_metadata_cannot_override_adminapp_revocation(self):
+        self.revoke(self.partner)
+        with links.sql_connection() as connection:
+            self.assertIsNone(connection.cursor().execute('SELECT revoked_at FROM devplay.SmartHerzPartners WHERE partner_id=?', self.partner).fetchone()[0])
+        self.assertEqual(self.auth_status(self.key), 401)
 
 
 if __name__ == '__main__':

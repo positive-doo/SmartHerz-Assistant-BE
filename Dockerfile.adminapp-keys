@@ -1,0 +1,7 @@
+# Keep production dependencies and ODBC pooling; update only the key integration and its tests/docs.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY integration_key_links.py /app/integration_key_links.py
+COPY tests/test_integration_key_links.py /app/tests/test_integration_key_links.py
+COPY docs/smart-era-integration.md /app/docs/smart-era-integration.md
+COPY README.md /app/README.md
