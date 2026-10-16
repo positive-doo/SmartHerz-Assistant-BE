@@ -1,4 +1,4 @@
-"""Offline failure checks and opt-in tests against devplay.SmartHerzKeyLinks."""
+"""Offline failure checks and opt-in tests against the existing devplay MSSQL tables."""
 import json
 import os
 import secrets
@@ -21,17 +21,22 @@ import main
 
 class KeyLinkFailureTests(unittest.TestCase):
     def setUp(self):
-        self.key = 'test-only-key'
-        environment = patch.dict(os.environ, {'INTEGRATION_API_KEY': self.key})
+        environment = patch.dict(os.environ, {'INTEGRATION_KEY_SECRET': 'test-only-secret-' + 'x' * 32})
         environment.start()
         self.addCleanup(environment.stop)
+        self.key_id = 'b' * 43
+        self.key = links._partner_key(self.key_id)
         self.client = TestClient(main.app)
         self.payload = {'token': 'a' * 43, 'pin': '1234'}
 
-    def test_missing_key_fails_before_sql_access(self):
-        with patch.dict(os.environ, {'INTEGRATION_API_KEY': ''}), patch.object(links, 'sql_connection') as sql:
-            self.assertEqual(self.client.get('/integration/key').status_code, 503)
+    def test_missing_secret_fails_before_sql_access(self):
+        with patch.dict(os.environ, {'INTEGRATION_KEY_SECRET': ''}), patch.object(links, 'sql_connection') as sql:
+            self.assertEqual(self.client.get('/integration/key').status_code, 200)
             self.assertEqual(self.client.post('/api/v1/integration/key-links/redeem', json=self.payload).status_code, 503)
+            with self.assertRaises(HTTPException):
+                links.create_partner('example')
+            with self.assertRaises(HTTPException):
+                links.create_link('http://127.0.0.1:8000', 'example')
             sql.assert_not_called()
 
     def test_sql_failure_is_generic_and_does_not_reveal_key(self):
@@ -41,54 +46,91 @@ class KeyLinkFailureTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 503)
                 self.assertNotIn(self.key, response.text)
                 self.assertNotIn('private', response.text)
-                with self.assertRaises(HTTPException) as raised:
-                    links.create_link('http://127.0.0.1:8000')
-                self.assertEqual(raised.exception.status_code, 503)
+                for operation in [lambda: links.create_link('http://127.0.0.1:8000', 'example'),
+                                  lambda: links.create_partner('example'), lambda: links.revoke_partner('example'),
+                                  lambda: links.require_partner_key(self.key)]:
+                    with self.assertRaises(HTTPException) as raised:
+                        operation()
+                    self.assertEqual(raised.exception.status_code, 503)
 
     def test_failed_commit_never_returns_key(self):
         context = MagicMock()
         connection = context.__enter__.return_value
-        connection.cursor.return_value.fetchone.return_value = (
-            links._pin_digest(self.payload['token'], self.payload['pin']), links._digest(self.key), 0, 0)
+        cursor = connection.cursor.return_value
+        cursor.execute.return_value = cursor
+        cursor.fetchone.side_effect = [
+            (links._pin_digest(self.payload['token'], self.payload['pin']), links._digest(self.key), 0, 0),
+            (self.key_id,),
+        ]
         connection.commit.side_effect = pyodbc.Error('commit failed')
         with patch.object(links, 'sql_connection', return_value=context):
             response = self.client.post('/api/v1/integration/key-links/redeem', json=self.payload)
         self.assertEqual(response.status_code, 503)
         self.assertNotIn(self.key, response.text)
 
-    def test_invalid_public_urls_are_rejected_before_sql(self):
+    def test_invalid_public_urls_and_partner_names_are_rejected_before_sql(self):
         for url in ['http://example.com', 'https://user:password@example.com', 'https://example.com/path', 'https://example.com/#fragment']:
             with self.subTest(url=url), patch.object(links, 'sql_connection') as sql, self.assertRaises(ValueError):
-                links.create_link(url)
+                links.create_link(url, 'example')
+            sql.assert_not_called()
+        for partner in ['', 'UPPER', 'a b', 'a' * 101, "a'; DELETE"]:
+            for operation in [links.create_partner, links.revoke_partner]:
+                with patch.object(links, 'sql_connection') as sql, self.assertRaises(ValueError):
+                    operation(partner)
+                sql.assert_not_called()
+
+    def test_legacy_shared_key_and_master_secret_are_never_accepted(self):
+        with patch.dict(os.environ, {'INTEGRATION_API_KEY': 'old-shared-key'}), patch.object(links, 'sql_connection') as sql:
+            for key in ['old-shared-key', os.environ['INTEGRATION_KEY_SECRET']]:
+                with self.assertRaises(HTTPException) as raised:
+                    links.require_partner_key(key)
+                self.assertEqual(raised.exception.status_code, 401)
             sql.assert_not_called()
 
 
 @unittest.skipUnless(os.getenv('SMARTHERZ_TEST_MSSQL') == '1', 'Set SMARTHERZ_TEST_MSSQL=1 to test the existing MSSQL database')
 class KeyLinkSqlTests(unittest.TestCase):
     def setUp(self):
-        self.key = secrets.token_urlsafe(32)
-        self.tokens = []
-        environment = patch.dict(os.environ, {'INTEGRATION_API_KEY': self.key})
+        environment = patch.dict(os.environ, {'INTEGRATION_KEY_SECRET': secrets.token_urlsafe(32)})
         environment.start()
         self.addCleanup(environment.stop)
+        self.tokens, self.partners = [], []
         self.addCleanup(self.cleanup_rows)
+        self.partner, self.key = self.new_partner()
         self.client = TestClient(main.app)
 
-    def cleanup_rows(self):
-        if self.tokens:
-            with links.sql_connection() as connection:
-                for token in self.tokens:
-                    connection.cursor().execute('DELETE FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?', links._digest(token))
-                connection.commit()
+    def new_partner(self):
+        partner = 'test_' + secrets.token_hex(12)
+        self.partners.append(partner)
+        links.create_partner(partner)
+        with links.sql_connection() as connection:
+            key_id = connection.cursor().execute('SELECT key_id FROM devplay.SmartHerzPartners WHERE partner_id = ?', partner).fetchone()[0]
+        return partner, links._partner_key(key_id)
 
-    def create(self):
-        result = links.create_link('http://127.0.0.1:8000', 1)
+    def cleanup_rows(self):
+        with links.sql_connection() as connection:
+            cursor = connection.cursor()
+            for token in self.tokens:
+                cursor.execute('DELETE FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?', links._digest(token))
+            for partner in self.partners:
+                cursor.execute('DELETE FROM devplay.SmartHerzPartners WHERE partner_id = ?', partner)
+            connection.commit()
+
+    def create(self, partner=None):
+        result = links.create_link('http://127.0.0.1:8000', partner or self.partner, 1)
         token = urlsplit(result['url']).fragment
         self.tokens.append(token)
         return {'token': token, 'pin': result['pin']}
 
     def redeem(self, payload):
         return self.client.post('/api/v1/integration/key-links/redeem', json=payload)
+
+    def auth_status(self, key):
+        try:
+            links.require_partner_key(key)
+            return 200
+        except HTTPException as error:
+            return error.status_code
 
     def test_wrong_pin_then_one_success_and_no_reuse(self):
         payload = self.create()
@@ -125,12 +167,14 @@ class KeyLinkSqlTests(unittest.TestCase):
             connection.commit()
         self.assertEqual(self.redeem(payload).status_code, 410)
 
-    def test_rotation_does_not_expose_replacement_key(self):
+    def test_misconfigured_secret_does_not_burn_link_or_return_another_key(self):
         payload = self.create()
-        with patch.dict(os.environ, {'INTEGRATION_API_KEY': 'replacement-key'}):
+        with patch.dict(os.environ, {'INTEGRATION_KEY_SECRET': 'replacement-secret-' + 'z' * 32}):
             response = self.redeem(payload)
-        self.assertEqual(response.status_code, 410)
-        self.assertNotIn('replacement-key', response.text)
+            self.assertEqual(response.status_code, 503)
+            with self.assertRaises(HTTPException):
+                links.create_link('http://127.0.0.1:8000', self.partner)
+        self.assertEqual(self.redeem(payload).json(), {'api_key': self.key})
 
     def test_only_one_concurrent_request_succeeds(self):
         payload = self.create()
@@ -157,13 +201,59 @@ except HTTPException as error:
                                  text=True, capture_output=True, cwd=Path(main.__file__).parent, check=True, timeout=30)
         self.assertEqual(process.stdout.strip(), '410')
 
-    def test_database_contains_hashes_instead_of_plain_credentials(self):
+    def test_database_contains_no_plaintext_credentials(self):
         payload = self.create()
         with links.sql_connection() as connection:
             row = connection.cursor().execute('SELECT token_digest, pin_digest, key_digest FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?', links._digest(payload['token'])).fetchone()
+            partner = connection.cursor().execute('SELECT key_id, key_digest FROM devplay.SmartHerzPartners WHERE partner_id = ?', self.partner).fetchone()
         self.assertTrue(all(len(value) == 64 for value in row))
-        for secret in [self.key, payload['token'], payload['pin']]:
+        for secret in [self.key, payload['token'], payload['pin'], os.environ['INTEGRATION_KEY_SECRET']]:
             self.assertNotIn(secret, row)
+            self.assertNotIn(secret, partner)
+
+    def test_partners_have_different_keys_and_revocation_is_individual(self):
+        other, other_key = self.new_partner()
+        payload, other_payload = self.create(), self.create(other)
+        self.assertNotEqual(self.key, other_key)
+        self.assertEqual(self.auth_status(self.key), 200)
+        self.assertEqual(self.auth_status(other_key), 200)
+        links.revoke_partner(self.partner)
+        links.revoke_partner(self.partner)
+        self.assertEqual(self.auth_status(self.key), 401)
+        self.assertEqual(self.redeem(payload).status_code, 410)
+        self.assertEqual(self.auth_status(other_key), 200)
+        self.assertEqual(self.redeem(other_payload).json(), {'api_key': other_key})
+        with self.assertRaises(ValueError):
+            self.create()
+
+    def test_new_link_keeps_active_key_and_reissue_never_reactivates_old_key(self):
+        old_payload = self.create()
+        self.assertEqual(self.redeem(self.create()).json(), {'api_key': self.key})
+        with self.assertRaises(ValueError):
+            links.create_partner(self.partner)
+        links.revoke_partner(self.partner)
+        links.create_partner(self.partner)
+        new_key = self.redeem(self.create()).json()['api_key']
+        self.assertNotEqual(new_key, self.key)
+        self.assertEqual(self.auth_status(self.key), 401)
+        self.assertEqual(self.auth_status(new_key), 200)
+        self.assertEqual(self.redeem(old_payload).status_code, 410)
+
+    def test_revocation_racing_redemption_leaves_no_access(self):
+        payload = self.create()
+        barrier = threading.Barrier(2)
+        def redeem():
+            barrier.wait(timeout=15)
+            return self.redeem(payload).status_code
+        def revoke():
+            barrier.wait(timeout=15)
+            links.revoke_partner(self.partner)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            response = executor.submit(redeem)
+            executor.submit(revoke).result(timeout=30)
+            self.assertIn(response.result(timeout=30), [200, 410])
+        self.assertEqual(self.auth_status(self.key), 401)
+        self.assertEqual(self.redeem(payload).status_code, 410)
 
 
 if __name__ == '__main__':

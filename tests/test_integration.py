@@ -10,17 +10,18 @@ from urllib.parse import parse_qs, urlsplit
 from fastapi.testclient import TestClient
 
 import main
+import integration_key_links as links
 
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
-        self.environment = patch.dict(os.environ, {
-            "INTEGRATION_API_KEY": "local-integration-test-key",
-        })
-        self.environment.start()
-        self.addCleanup(self.environment.stop)
+        auth_sql = patch.object(links, 'sql_connection')
+        self.auth_sql = auth_sql.start()
+        self.addCleanup(auth_sql.stop)
+        self.auth_cursor = self.auth_sql.return_value.__enter__.return_value.cursor.return_value
+        self.auth_cursor.execute.return_value.fetchone.return_value = (1,)
         self.client = TestClient(main.app)
-        self.headers = {"X-API-Key": "local-integration-test-key"}
+        self.headers = {"X-API-Key": "smh_" + "a" * 43}
         self.destinations = [main.IntegrationPlace(
             id=f"destination_{page_id}", name=f"Destination {page_id}", category="destination",
             slug=f"destination-{page_id}", url=f"https://example.test/destination/{page_id}",
@@ -68,11 +69,19 @@ class IntegrationTests(unittest.TestCase):
             wordpress.assert_not_called()
             self.pages_mock.assert_not_called()
 
-    def test_unconfigured_key_returns_503(self):
-        with patch.dict(os.environ, {"INTEGRATION_API_KEY": ""}), patch("main._sql_connection") as sql:
+    def test_auth_database_failure_returns_503_before_sources(self):
+        with patch.object(links, 'sql_connection', side_effect=RuntimeError('private database')), patch("main._sql_connection") as sql:
             for path in [self.kpis, "/api/v1/integration/tourism"]:
                 self.assertEqual(self.client.get(path, headers=self.headers).status_code, 503)
             sql.assert_not_called()
+
+    def test_unknown_or_revoked_partner_key_rejects_both_endpoints(self):
+        self.auth_cursor.execute.return_value.fetchone.return_value = None
+        with patch("main._sql_connection") as sql:
+            for path in [self.kpis, "/api/v1/integration/tourism"]:
+                self.assertEqual(self.client.get(path, headers=self.headers).status_code, 401)
+            sql.assert_not_called()
+        self.pages_mock.assert_not_called()
 
     def test_kpis_use_inclusive_utc_bounds_and_keep_missing_metrics_null(self):
         with patch("main._sql_connection", return_value=self.sql_context):

@@ -1,4 +1,3 @@
-import hmac
 import html
 import json
 import logging
@@ -45,7 +44,7 @@ from docx.oxml.ns import qn
 
 from database import sql_connection as _sql_connection
 from hybrid_search import search_knowledge
-from integration_key_links import router as integration_key_links_router
+from integration_key_links import require_partner_key, router as integration_key_links_router
 from link_validation import sanitize_tool_result
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -312,11 +311,7 @@ _integration_key_header = APIKeyHeader(
 def _require_integration_key(
     api_key: str | None = Security(_integration_key_header),
 ) -> None:
-    expected = os.getenv("INTEGRATION_API_KEY")
-    if not expected or not expected.strip():
-        raise HTTPException(status_code=503, detail="Integration API key is not configured.")
-    if not api_key or not hmac.compare_digest(api_key.encode(), expected.encode()):
-        raise HTTPException(status_code=401, detail="Invalid integration API key.")
+    require_partner_key(api_key)
 
 
 def _integration_text(value: str) -> str:

@@ -61,7 +61,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `APP_ID` | No | SmartHerz application ID for prompts, feedback and KPI aggregates. Default: `66`. |
 | `CLIENT_ID` | No | SmartHerz client ID. Default: `18`. |
 | `TRAVEL_PLAN_TEMPLATE_PATH` | No | Optional path to the DOCX template used for travel-plan exports. |
-| `INTEGRATION_API_KEY` | For SMART ERA endpoints | Static key accepted in the `X-API-Key` header. |
+| `INTEGRATION_KEY_SECRET` | For partner key delivery | Server-only secret (at least 32 random characters); keep stable and identical across replicas. Partner keys are verified in MSSQL. |
 | `INTEGRATION_EVENTS_URL` | No | WordPress MEC collection URL; defaults to the public SmartHerz portal. |
 
 For Azure Container Apps, store the private BM25 URL as a secret (for example,
@@ -119,4 +119,6 @@ http://localhost:8000/healthz
 This repository currently has no GitHub Actions deployment workflow. Pushing
 to `main` does not deploy the backend through a workflow in this repository.
 Updating the Azure Container App is a separate deployment step; keep service
-credentials and the integration API key in Azure secrets.
+credentials and the server-only `INTEGRATION_KEY_SECRET` in Azure secrets.
+Partner API keys and revocation are managed in the existing MSSQL database;
+see the integration documentation for the `create`, `link` and `revoke` commands.

@@ -9,15 +9,15 @@ Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/
 U direktorijumu backend repozitorijuma, uz instalirane `requirements.txt` i ODBC Driver 18:
 
 ```powershell
-$env:INTEGRATION_API_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
+$env:INTEGRATION_KEY_SECRET = python -c "import secrets; print(secrets.token_urlsafe(32))"
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
 Postojeće promenljive `MSSQL_HOST`, `MSSQL_DB`, `MSSQL_USER` i `MSSQL_PASS` moraju biti dostupne procesu. Koristi se postojeća `_sql_connection()` i `APP_ID` (podrazumevano 66). KPI ne koristi demo statistiku i ne upisuje podatke u SQL.
 
-Lokalni base URL je `http://127.0.0.1:8000`. OpenAPI je na `/docs`, gde dugme **Authorize** prima integration ključ. Ključ generisan gornjom komandom važi dok ga držite u konfiguraciji; ne generiše se ponovo po zahtevu.
+Lokalni base URL je `http://127.0.0.1:8000`. OpenAPI je na `/docs`, gde dugme **Authorize** prima partnerski API ključ preuzet jednokratnim linkom. Gornja promenljiva je interna serverska tajna; ne šalje se partnerima niti služi za autentifikaciju API poziva.
 
-Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Zaseban integration ključ čuva se kao Azure secret vezan za `INTEGRATION_API_KEY`. AgroTour ključ nije ključ za ove endpoint-e.
+Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Interna tajna čuva se kao Azure secret vezan za `INTEGRATION_KEY_SECRET`. Svaki partner ima zaseban API ključ u MSSQL evidenciji. AgroTour ključ nije ključ za ove endpoint-e.
 
 ## Autentifikacija i konfiguracija
 
@@ -29,39 +29,48 @@ X-API-Key: <integration-api-key>
 
 | Promenljiva | Značenje |
 | --- | --- |
-| `INTEGRATION_API_KEY` | Jedan statičan ključ za oba endpointa; obavezan. |
+| `INTEGRATION_KEY_SECRET` | Interna tajna za generisanje/predaju partnerskih ključeva; najmanje 32 nasumična znaka. Čuvati trajno i jednako na svim replikama. |
 | `INTEGRATION_EVENTS_URL` | Opcionalno; podrazumevano `https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events`. |
 
-Nedostajući/pogrešan ključ vraća 401. Ako integration ključ nije konfigurisan, vraća se 503. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
+Nedostajući, nepoznat ili ukinut ključ vraća 401. Svaki API poziv proverava hash ključa i status partnera u SQL-u, bez keširanja. Nedostupna baza vraća 503. Prethodni zajednički `INTEGRATION_API_KEY` više se ne prihvata. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
 
 ## Jednokratno preuzimanje ključa
 
 Backend ima komandu za kreiranje linka i jednostavnu stranicu za preuzimanje uz PIN. Mejl sa linkom šalje operator ručno. Silo je bio samo referenca; ovo rešenje ga ne koristi.
 
-Evidencija se čuva u postojećem MSSQL-u, u jednoj tabeli **`devplay.SmartHerzKeyLinks`**. Jednom pokrenite `sql/001_smartherz_key_links.sql` u bazi koju backend koristi; skripta može bezbedno da se pokrene ponovo. Šema `devplay` mora već da postoji. Backend nalogu potrebna su prava `SELECT`, `INSERT`, `UPDATE` i `DELETE` na toj tabeli. Zahtevi aplikacije ne kreiraju tabele.
+Evidencija se čuva u postojećem MSSQL-u: **`devplay.SmartHerzPartners`** sadrži partnera, nasumični identifikator ključa, hash API ključa, vreme izdavanja i vreme ukidanja; postojeća **`devplay.SmartHerzKeyLinks`** čuva jednokratne linkove. Pokrenite `sql/001_smartherz_key_links.sql`, pa `sql/002_smartherz_partners.sql`. Obe skripte su bezbedne za ponovno pokretanje. Šema `devplay` mora već da postoji. Backend/operator nalogu potrebna su prava `SELECT`, `INSERT`, `UPDATE` i `DELETE` na ovim tabelama. Zahtevi aplikacije ne kreiraju tabele.
 
-Koriste se postojeći `MSSQL_*` parametri i `INTEGRATION_API_KEY`. Nema SQLite datoteke, dodatne baze ili servisa. Lokalni server pokrenite sa tim parametrima:
+Koriste se postojeći `MSSQL_*` parametri i nova interna tajna `INTEGRATION_KEY_SECRET`. Nema dodatne baze, servisa niti administrativnog web endpointa. Lokalni server pokrenite sa tim parametrima:
 
 ```powershell
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-U drugom terminalu, sa **istim ključem i istim MSSQL parametrima**, kreirajte link:
+U drugom terminalu, sa **istom internom tajnom i istim MSSQL parametrima**, kreirajte partnera i prvi link:
 
 ```powershell
-python integration_key_links.py --base-url http://127.0.0.1:8000 --expires-hours 1
+python integration_key_links.py create --partner smart-era --base-url http://127.0.0.1:8000 --expires-hours 1
 ```
 
-Komanda vraća JSON sa `url`, četvorocifrenim `pin` i `expires_at`. Rok može biti 1, 24 ili 168 sati (podrazumevano 7 dana). Link šaljite mejlom; PIN po mogućnosti drugim kanalom. Komanda predaje postojeći ključ; ne menja ga i ne štampa njegovu vrednost. Novi ključ se generiše samo kada operator namerno želi da ga postavi/zameni.
+Komanda vraća JSON sa `partner`, `url`, četvorocifrenim `pin` i `expires_at`, bez API ključa. Partner je jedinstvena oznaka od 1–100 malih slova, cifara, crtica ili donjih crta. Rok može biti 1, 24 ili 168 sati (podrazumevano 7 dana). Link šaljite mejlom; PIN po mogućnosti drugim kanalom.
+
+Za novi link za isti aktivni ključ i za ukidanje pristupa:
+
+```powershell
+python integration_key_links.py link --partner smart-era --base-url https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io
+python integration_key_links.py revoke --partner smart-era
+```
+
+`link` zadržava postojeći ključ. `revoke` ukida pristup samo tom partneru, uključujući sve njegove neiskorišćene linkove, bez restarta/deploy-a. Ponovljeni `revoke` je bezbedan. Za ponovno odobravanje ukinutom partneru koristite `create`: dobija novi ključ i link; stari ključ i stari linkovi ostaju nevažeći. `create` odbija partnera koji već ima aktivan ključ, da ne bi slučajno prekinuo njegovu integraciju.
 
 - `GET /integration/key#<token>` prikazuje stranicu. Samo otvaranje/pretpregled linka ga ne troši; token iz fragmenta ne odlazi u URL serverskog zahteva.
 - Dugme šalje token i PIN na `POST /api/v1/integration/key-links/redeem`. Uspešan odgovor vraća ključ jednom; ponovni pokušaj ili istekao link vraća 410, pogrešan PIN 403. Posle pet pogrešnih PIN-ova link se poništava.
-- API ključ ostaje važeći za oba integraciona endpointa i posle iskorišćavanja linka. Promena API ključa poništava ranije linkove; oni ne otkrivaju novi ključ.
+- API ključ ostaje važeći za oba integraciona endpointa i posle iskorišćavanja linka, sve dok pristup tom partneru ne bude ukinut. Ukidanje ne utiče na druge partnere. Zahtev koji je već prošao proveru pre ukidanja može završiti svoj odgovor.
 - Evidencija čuva hash tokena, proveru PIN-a i ključa, rok i broj pokušaja. Ne čuva sam API ključ, token ili PIN. Provera, promena broja pokušaja i brisanje rade u SQL transakciji uz `UPDLOCK, HOLDLOCK`. Ključ se vraća tek posle uspešnog commit-a. Zato samo jedan istovremeni zahtev može preuzeti ključ, uključujući zahteve različitih procesa/replika.
 - Rok se određuje i proverava prema SQL UTC vremenu (`SYSUTCDATETIME()`), a istekli zapisi se čiste pri kreiranju novog linka. Poseban zakazani posao nije potreban.
-- Ako ključ nije podešen ili SQL/tabela nisu dostupni pri kreiranju/preuzimanju, vraća se 503. Stranica i odgovori sa ključem imaju `Cache-Control: no-store`.
+- Ako interna tajna nije podešena ili SQL/tabela nisu dostupni pri kreiranju/preuzimanju, vraća se 503. Pogrešno podešena interna tajna ne troši ispravan link niti vraća drugi ključ. Stranica i odgovori sa ključem imaju `Cache-Control: no-store`.
 
-SQL evidencija opstaje posle restarta i zamene kontejnera. Sve Azure replike i administratorska komanda moraju koristiti istu bazu i isti `INTEGRATION_API_KEY`. API ključ se i dalje čuva kao Azure secret. Promenljiva `INTEGRATION_KEY_LINKS_DB` više se ne koristi. Ove izmene ne šalju mejlove i ne izvršavaju deploy.
+SQL evidencija opstaje posle restarta i zamene kontejnera. Sve Azure replike i administratorska komanda moraju koristiti istu bazu i istu internu tajnu `INTEGRATION_KEY_SECRET`. Partnerski ključ izvodi se preko HMAC-SHA256 iz te tajne i nasumičnog identifikatora ključa, uz posebnu oznaku namene. Tako baza ne čuva čitljive API ključeve, a novi link može predati isti aktivni ključ. Internu tajnu sačuvati u Azure secrets; njena promena zahteva ponovno izdavanje partnerskih ključeva za dalju predaju. Stari zajednički ključ i njegovi linkovi ne važe u ovom sistemu. Mejlovi se šalju ručno.
 
 ## Turistički podaci
 
@@ -119,11 +128,11 @@ Odgovor sadrži samo agregate, bez identifikatora korisnika/sesija i sadržaja r
 
 ## Primeri poziva i provera
 
-Dok server radi, iz PowerShell-a sa istim `INTEGRATION_API_KEY`:
+Dok server radi, iz PowerShell-a sa partnerskim API ključem preuzetim preko linka:
 
 ```powershell
-Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/kpis?date_from=2026-07-01&date_to=2026-07-31' -Headers @{'X-API-Key' = $env:INTEGRATION_API_KEY}
-Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/tourism' -Headers @{'X-API-Key' = $env:INTEGRATION_API_KEY}
+Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/kpis?date_from=2026-07-01&date_to=2026-07-31' -Headers @{'X-API-Key' = $env:PARTNER_API_KEY}
+Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/tourism' -Headers @{'X-API-Key' = $env:PARTNER_API_KEY}
 ```
 
 Podrazumevani testovi koriste lokalne primere za WordPress i SQL odgovore, bez testnih upisa u stvarnu bazu. Razvojne zavisnosti uključuju `httpx` za TestClient.
@@ -140,7 +149,7 @@ $env:SMARTHERZ_TEST_MSSQL = "1"
 python -m unittest discover -s tests -v
 ```
 
-Ovi dodatni testovi kreiraju privremene linkove samo u `devplay.SmartHerzKeyLinks` i čiste svoje zapise nakon provere. Pokrivaju PIN, istek, promenu ključa, ponovni pristup, novi proces i istovremene zahteve. Kreiranje linka, kao i u redovnom radu, uklanja istekle zapise iz ove tabele.
+Ovi dodatni testovi kreiraju privremene partnere/linkove samo u dve `devplay.SmartHerz*` tabele i čiste svoje zapise nakon provere. Pokrivaju odvojene ključeve, pojedinačno ukidanje, ponovno izdavanje, PIN, istek, pogrešnu internu tajnu, ponovni pristup, novi proces i istovremene zahteve. Kreiranje linka, kao i u redovnom radu, uklanja istekle linkove.
 
 Statusi: 200 uspešan odgovor; 401 autentifikacija; 422 datumi; 503 konfiguracija ili izvor nisu dostupni.
 
