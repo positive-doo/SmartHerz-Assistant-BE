@@ -1,6 +1,0 @@
-{
-  "places": [
-    {"id": "demo_poi_001", "name": "DEMO – Turistička lokacija 1", "category": "cultural_heritage", "description": "Izmišljeni POI za proveru JSON odgovora."},
-    {"id": "demo_poi_002", "name": "DEMO – Turistička lokacija 2", "category": "nature"}
-  ]
-}

@@ -16,7 +16,6 @@ class IntegrationTests(unittest.TestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
             "INTEGRATION_API_KEY": "local-integration-test-key",
-            "INTEGRATION_TOURISM_DEMO": "true",
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -131,34 +130,37 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertNotIn("private", response.text)
 
-    def test_tourism_includes_demo_catalogue_and_all_event_pages(self):
+    def test_tourism_includes_real_pois_and_all_event_pages(self):
         responses = [self.wp_response([self.event(3), self.event(4)], pages=2, total=3),
                      self.wp_response([self.event(5)], pages=2, total=3)]
         with patch("main.urlopen", side_effect=responses) as wordpress:
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(len(body["places"]), 10)
+        self.assertEqual(len(body["places"]), 22)
         self.assertEqual(len(body["routes"]), 5)
-        self.assertEqual(sum(item["id"].startswith("demo_") for item in body["places"]), 2)
+        pois = [item for item in body["places"] if item["category"] == "poi"]
+        self.assertEqual(len(pois), 14)
+        self.assertTrue(all(item["id"].startswith("poi-") and item["description"] for item in pois))
+        self.assertFalse(any(item["id"].startswith("demo_") for item in body["places"]))
         self.assertTrue(all(item["id"].startswith("route_") for item in body["routes"]))
         self.assertEqual([event["id"] for event in body["events"]], ["event_3", "event_4", "event_5"])
         self.assertEqual(body["events"][0]["name"], "Događaj & kultura")
         self.assertEqual(body["events"][0]["description"], "Opis događaja.")
         self.assertEqual(body["events"][0]["start_date"], "2026-10-15")
         self.assertIsNotNone(datetime.fromisoformat(body["generated_at"]).utcoffset())
-        self.assertEqual(response.headers["X-SmartHerz-Data-Mode"], "demo-pois-live-wordpress")
+        self.assertEqual(response.headers["X-SmartHerz-Data-Mode"], "curated-pois-live-wordpress")
         requested_pages = [parse_qs(urlsplit(call.args[0].full_url).query)["page"] for call in wordpress.call_args_list]
         self.assertEqual(requested_pages, [["1"], ["2"]])
 
-    def test_demo_ids_are_stable_and_absent_tourism_fields_are_omitted(self):
+    def test_catalogue_ids_are_stable_and_absent_tourism_fields_are_omitted(self):
         with patch("main.urlopen", side_effect=[self.wp_response([]), self.wp_response([])]):
             first = self.client.get("/api/v1/integration/tourism", headers=self.headers).json()
             second = self.client.get("/api/v1/integration/tourism", headers=self.headers).json()
         self.assertEqual(first["places"], second["places"])
         self.assertEqual(first["routes"], second["routes"])
         self.assertNotIn("description", first["places"][1])
-        self.assertNotIn("url", first["places"][-1])
+        self.assertNotIn("slug", first["places"][-1])
 
     def raw_pages(self):
         rows = [{
@@ -170,13 +172,13 @@ class IntegrationTests(unittest.TestCase):
         } for record in self.destinations + self.routes]
         return sorted(rows, key=lambda row: row["id"])
 
-    def test_live_pages_replace_demo_destinations_and_routes(self):
+    def test_live_destination_and_route_mapping(self):
         self.pages_patch.stop()
         with patch("main.urlopen", side_effect=[self.wp_response(self.raw_pages()), self.wp_response([])]) as wordpress:
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(len(body["places"]), 10)
+        self.assertEqual(len(body["places"]), 22)
         self.assertEqual(len(body["routes"]), 5)
         destinations = [row for row in body["places"] if row["category"] == "destination"]
         self.assertEqual({row["id"] for row in destinations}, {row.id for row in self.destinations})
@@ -228,12 +230,19 @@ class IntegrationTests(unittest.TestCase):
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 503)
 
-    def test_demo_must_be_explicitly_enabled(self):
-        for setting in ["", "false"]:
-            with patch.dict(os.environ, {"INTEGRATION_TOURISM_DEMO": setting}), patch("main.urlopen") as wordpress:
-                response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
-                self.assertEqual(response.status_code, 503)
-                wordpress.assert_not_called()
+    def test_catalogue_is_available_without_demo_configuration(self):
+        with patch("main.urlopen", return_value=self.wp_response([])):
+            response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        ids = [row["id"] for row in response.json()["places"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertIn("poi-trebisnjica", ids)
+
+    def test_missing_poi_catalogue_never_returns_partial_success(self):
+        with patch("main.Path.read_text", side_effect=OSError("catalogue unavailable")):
+            response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn("places", response.json())
 
     def test_wordpress_failure_never_returns_a_partial_success(self):
         for failure in [URLError("unavailable"), self.wp_response({"error": "not a collection"}),

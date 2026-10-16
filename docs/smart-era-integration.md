@@ -1,8 +1,8 @@
 # SMART-HERZ / SMART ERA integracija
 
-Lokalno implementirana dva GET endpointa. KPI koristi stvarni SQL. Tourism koristi stvarne osnovne podatke osam destinacija, pet ruta i događaje iz WordPress-a. Demo ostaju samo dva POI-ja, dok ne stignu zvanični CSV URL-ovi i stabilni ID-jevi.
+Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Početni tourism izvoz obuhvata 14 stvarnih POI-ja iz postojećeg frontend kataloga, uz osam destinacija, pet ruta i dostupne događaje iz javnog WordPress API-ja. To je ograničeni početni skup, a ne kompletan katalog svih turističkih lokacija regiona.
 
-Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url` i `category=destination`; rute `id`, `name` i `url`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. CSV ostaje potreban za stvarne POI podatke i liste lokacija po rutama.
+Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url` i `category=destination`; rute `id`, `name` i `url`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI zapisi u `data/integration_pois.json` preuzeti su iz `SmartHerz-Assistant-FE/src/data/rightSuggestions.ts`: sačuvani su postojeći `poi-*` ID-jevi, nazivi, opisi na lokalnom jeziku i izvorni URL-ovi. Katalog se menja kroz verzionisanje tog fajla. Geografske koordinate i liste lokacija po rutama nisu deo ovog početnog skupa.
 
 ## Pokretanje lokalno
 
@@ -10,7 +10,6 @@ U direktorijumu backend repozitorijuma, uz instalirane `requirements.txt` i ODBC
 
 ```powershell
 $env:INTEGRATION_API_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
-$env:INTEGRATION_TOURISM_DEMO = "true"
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -18,7 +17,7 @@ Postojeće promenljive `MSSQL_HOST`, `MSSQL_DB`, `MSSQL_USER` i `MSSQL_PASS` mor
 
 Lokalni base URL je `http://127.0.0.1:8000`. OpenAPI je na `/docs`, gde dugme **Authorize** prima integration ključ. Ključ generisan gornjom komandom važi dok ga držite u konfiguraciji; ne generiše se ponovo po zahtevu.
 
-Azure base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Izmene nisu deploy-ovane; novi endpointi na toj adresi još nisu dostupni. Pri kasnijem deploy-u zaseban integration ključ treba čuvati kao Azure secret vezan za `INTEGRATION_API_KEY`. AgroTour ključ nije ključ za ove endpoint-e.
+Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Zaseban integration ključ čuva se kao Azure secret vezan za `INTEGRATION_API_KEY`. AgroTour ključ nije ključ za ove endpoint-e.
 
 ## Autentifikacija i konfiguracija
 
@@ -31,7 +30,6 @@ X-API-Key: <integration-api-key>
 | Promenljiva | Značenje |
 | --- | --- |
 | `INTEGRATION_API_KEY` | Jedan statičan ključ za oba endpointa; obavezan. |
-| `INTEGRATION_TOURISM_DEMO` | Postaviti `true` za lokalne demo POI-je dok CSV nije povezan. Podrazumevano je isključen. |
 | `INTEGRATION_EVENTS_URL` | Opcionalno; podrazumevano `https://smart-herz.modoos.rs/wp-json/wp/v2/mec-events`. |
 
 Nedostajući/pogrešan ključ vraća 401. Ako integration ključ nije konfigurisan, vraća se 503. SMART ERA potvrda načina autentifikacije potrebna je pre povezivanja.
@@ -69,7 +67,7 @@ SQL evidencija opstaje posle restarta i zamene kontejnera. Sve Azure replike i a
 
 `GET /api/v1/integration/tourism`
 
-Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. `places` sadrži osam stvarnih destinacija i dva demo POI-ja, a `routes` pet stvarnih ruta. WordPress ID-jevi dobijaju prefikse `destination_`, `route_` i `event_`; samo demo POI-jevi imaju prefiks `demo_` i oznaku `DEMO` u nazivu. Zaglavlje odgovora `X-SmartHerz-Data-Mode: demo-pois-live-wordpress` označava ovaj privremeni način rada.
+Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. `places` sadrži osam destinacija i 14 POI-ja, a `routes` pet ruta. WordPress ID-jevi imaju prefikse `destination_`, `route_` i `event_`; POI-jevi zadržavaju postojeće frontend ID-jeve sa prefiksom `poi-`. Zaglavlje `X-SmartHerz-Data-Mode: curated-pois-live-wordpress` označava lokalno uređeni POI katalog i žive WordPress izvore. Nema demo zapisa.
 
 Osnovna polja zapisa su `id`, `name`, opciono `description` i `url`. `places` ima i `category` (`destination` za opštine) i opcioni `slug`. Događaji imaju dostupne `start_date` i `end_date` u formatu `YYYY-MM-DD`; to su lokalni datumi portala `Europe/Sarajevo`, bez izmišljanja vremena početka. HTML naslova/opisa pretvara se u običan tekst. Nepopunjena tourism polja se izostavljaju.
 
@@ -80,7 +78,7 @@ Skraćen primer:
   "generated_at": "2026-10-13T08:00:00Z",
   "places": [
     {"id": "destination_347", "name": "Trebinje", "category": "destination", "slug": "trebinje", "url": "https://smart-herz.modoos.rs/destinacije/trebinje/"},
-    {"id": "demo_poi_001", "name": "DEMO – Turistička lokacija 1", "category": "cultural_heritage", "description": "Izmišljeni POI za proveru JSON odgovora."}
+    {"id": "poi-trebisnjica", "name": "Trebišnjica", "category": "poi", "url": "https://smart-herz.modoos.rs/destinacije/trebinje"}
   ],
   "routes": [
     {"id": "route_1590", "name": "Staza ukusa – Istočna Hercegovina", "url": "https://smart-herz.modoos.rs/tematske-rute/staza-ukusa-istocna-hercegovina/"}
@@ -91,9 +89,9 @@ Skraćen primer:
 }
 ```
 
-Svaki poziv preuzima osnovne podatke 13 poznatih stranica destinacija/ruta i sve WordPress stranice događaja. Proverava broj zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun spisak ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Bez eksplicitnog demo režima, tourism vraća 503 dok stvarni POI izvor nije povezan.
+Svaki poziv preuzima osnovne podatke 13 poznatih stranica destinacija/ruta i sve WordPress stranice događaja. Proverava broj zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun spisak ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Nedostupan ili neispravan lokalni POI fajl takođe vraća 503; nema delimičnog uspešnog izvoza.
 
-SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju. Odgovor koji sadrži demo POI-je služi za lokalni razvoj i nije spreman za produkcionu sinhronizaciju. Nakon dobijanja CSV izvora treba povezati stvarne POI podatke, potvrditi stabilne ID-jeve i proveriti kompletan izvoz. Geometrija ruta, redosled stanica i opisi koji nisu strukturisani ne izmišljaju se.
+SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju dogovorenog skupa. Početni skup je namerno ograničen na postojeći uređeni katalog; ne predstavlja sve POI-je u svih osam opština. Potpuniji CSV izvor može se povezati naknadno. Geometrija ruta, redosled stanica i opisi koji nisu strukturisani ne izmišljaju se.
 
 ## KPI statistika
 
@@ -115,7 +113,7 @@ Oba datuma su obavezna, striktno `YYYY-MM-DD`, uključiva i sa UTC značenjem. P
 - `recommendations_generated`: `null`, jer broj preporuka nije zasebno evidentiran.
 - `average_session_duration_seconds`: prosek validnih `closed_at - created_at` za sesije započete u periodu; `null` kada nema zabeleženih završetaka. Negativna trajanja se ne uključuju. Ne procenjuje se trajanje iz poruka.
 
-SQL provera 13.10.2026. pokazuje ukupno 42 sesije, poslednju od 21.08.2026. Aktuelni backend nove razgovore čuva u memoriji i ne upisuje nove SQL sesije. Zato broj opisuje samo postojeće evidentirane SQL sesije; nula za oktobar ne dokazuje odsustvo upotrebe aplikacije. Sva postojeća trajanja su nedostupna. Nova telemetrija nije deo implementacije.
+SQL provera 16.10.2026. pokazuje ukupno 42 sesije, poslednju od 21.08.2026. Aktuelni backend nove razgovore čuva u memoriji i ne upisuje nove SQL sesije. Zato broj opisuje samo postojeće evidentirane SQL sesije; nula za oktobar ne dokazuje odsustvo upotrebe aplikacije. Sva postojeća trajanja su nedostupna. Nova telemetrija nije deo implementacije.
 
 Odgovor sadrži samo agregate, bez identifikatora korisnika/sesija i sadržaja razgovora. SQL nedostupnost vraća 503; ne zamenjuje se nulom ili demo podacima.
 
@@ -145,3 +143,9 @@ python -m unittest discover -s tests -v
 Ovi dodatni testovi kreiraju privremene linkove samo u `devplay.SmartHerzKeyLinks` i čiste svoje zapise nakon provere. Pokrivaju PIN, istek, promenu ključa, ponovni pristup, novi proces i istovremene zahteve. Kreiranje linka, kao i u redovnom radu, uklanja istekle zapise iz ove tabele.
 
 Statusi: 200 uspešan odgovor; 401 autentifikacija; 422 datumi; 503 konfiguracija ili izvor nisu dostupni.
+
+## Produkciona konfiguracija
+
+AgroTour koristi `AGROTOUR_SEARCH_URL=https://agrotour.eu/api/v1/search` i postojeći zaseban `AGROTOUR_API_KEY`. Taj ključ nije integration ključ za SMART ERA.
+
+`CORS_ORIGINS` i Azure ingress CORS dozvoljavaju Storage frontend origin i stvarni Front Door origin `https://positivefrontend-erauhbdtd7c7dzed.z02.azurefd.net`. SQL pooling ostaje uključen u `database.py` i Docker unixODBC konfiguraciji; ova integracija ga ne menja.

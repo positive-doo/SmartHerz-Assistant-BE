@@ -68,7 +68,7 @@ TRANSCRIPTION_MODEL = os.getenv("TRANSCRIPTION_MODEL", "gpt-transcribe")
 TRANSCRIPTION_LANGUAGE = os.getenv("TRANSCRIPTION_LANGUAGE", "sr")
 AGROTOUR_SEARCH_URL = os.getenv(
     "AGROTOUR_SEARCH_URL",
-    "https://dev.agrotour.eu/api/v1/search",
+    "https://agrotour.eu/api/v1/search",
 )
 APP_ID = int(os.getenv("APP_ID", "66"))
 CLIENT_ID = int(os.getenv("CLIENT_ID", "18"))
@@ -411,29 +411,24 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
     response_model_exclude_none=True,
     dependencies=[Depends(_require_integration_key)],
     tags=["SMART ERA integration"],
-    summary="Tourism export (demo POIs, live destinations, routes and events)",
+    summary="Tourism export (curated POIs, live destinations, routes and events)",
     responses={401: {"description": "Invalid API key"}, 503: {"description": "Source unavailable"}},
 )
 def integration_tourism(response: Response) -> TourismResponse:
-    if os.getenv("INTEGRATION_TOURISM_DEMO", "false").lower() != "true":
-        raise HTTPException(
-            status_code=503,
-            detail="Tourism POI source is pending. Enable demo mode for local development.",
-        )
     try:
-        demo = json.loads((BASE_DIR / "data" / "integration_tourism_demo.json").read_text(encoding="utf-8"))
+        catalogue = json.loads((BASE_DIR / "data" / "integration_pois.json").read_text(encoding="utf-8"))
         destinations, routes = _fetch_integration_pages()
         events = _fetch_integration_events()
         result = TourismResponse(
             generated_at=datetime.now(timezone.utc),
-            places=destinations + demo["places"],
+            places=destinations + catalogue["places"],
             routes=routes,
             events=events,
         )
     except Exception as exc:
         logger.warning("Integration tourism source failed: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="Tourism source is temporarily unavailable.") from exc
-    response.headers["X-SmartHerz-Data-Mode"] = "demo-pois-live-wordpress"
+    response.headers["X-SmartHerz-Data-Mode"] = "curated-pois-live-wordpress"
     return result
 
 
