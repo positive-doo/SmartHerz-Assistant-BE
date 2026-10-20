@@ -1,0 +1,9 @@
+# Update only the CSV integration over the current production dependencies/pooling.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY main.py integration_tourism.py /app/
+COPY tests/test_integration.py tests/test_integration_tourism_csv.py /app/tests/
+COPY tests/fixtures/tourism_20261020.json /app/tests/fixtures/tourism_20261020.json
+COPY docs/smart-era-integration.md /app/docs/smart-era-integration.md
+COPY README.md /app/README.md
+RUN rm -f /app/data/integration_pois.json

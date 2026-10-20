@@ -22,6 +22,10 @@ class IntegrationTests(unittest.TestCase):
         self.auth_cursor.execute.return_value.fetchone.return_value = (1,)
         self.client = TestClient(main.app)
         self.headers = {"X-API-Key": "smh_" + "a" * 43}
+        self.catalogue = json.loads((main.BASE_DIR / "tests" / "fixtures" / "tourism_20261020.json").read_text(encoding="utf-8"))
+        self.catalogue_patch = patch("main.fetch_tourism_catalogue", return_value=self.catalogue)
+        self.catalogue_mock = self.catalogue_patch.start()
+        self.addCleanup(self.catalogue_patch.stop)
         self.destinations = [main.IntegrationPlace(
             id=f"destination_{page_id}", name=f"Destination {page_id}", category="destination",
             slug=f"destination-{page_id}", url=f"https://example.test/destination/{page_id}",
@@ -146,19 +150,25 @@ class IntegrationTests(unittest.TestCase):
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(len(body["places"]), 22)
+        self.assertEqual(len(body["places"]), 289)
         self.assertEqual(len(body["routes"]), 5)
         pois = [item for item in body["places"] if item["category"] == "poi"]
-        self.assertEqual(len(pois), 14)
-        self.assertTrue(all(item["id"].startswith("poi-") and item["description"] for item in pois))
+        self.assertEqual(len(pois), 281)
+        self.assertTrue(all(item["id"].startswith("poi_") and item["municipality"] for item in pois))
+        self.assertTrue(all("description" not in item and "latitude" not in item and "longitude" not in item for item in pois))
+        route_poi_ids = [row["poi_ids"] for row in body["routes"]]
+        self.assertEqual([len(members) for members in route_poi_ids], [6, 179, 57, 174, 65])
+        self.assertTrue(all(len(members) == len(set(members)) for members in route_poi_ids))
+        self.assertEqual(set().union(*map(set, route_poi_ids)), {row["id"] for row in pois})
         self.assertFalse(any(item["id"].startswith("demo_") for item in body["places"]))
         self.assertTrue(all(item["id"].startswith("route_") for item in body["routes"]))
         self.assertEqual([event["id"] for event in body["events"]], ["event_3", "event_4", "event_5"])
         self.assertEqual(body["events"][0]["name"], "Događaj & kultura")
         self.assertEqual(body["events"][0]["description"], "Opis događaja.")
         self.assertEqual(body["events"][0]["start_date"], "2026-10-15")
+        self.assertNotIn("poi_ids", main.app.openapi()["components"]["schemas"]["IntegrationEvent"]["properties"])
         self.assertIsNotNone(datetime.fromisoformat(body["generated_at"]).utcoffset())
-        self.assertEqual(response.headers["X-SmartHerz-Data-Mode"], "curated-pois-live-wordpress")
+        self.assertEqual(response.headers["X-SmartHerz-Data-Mode"], "live-csv-live-wordpress")
         requested_pages = [parse_qs(urlsplit(call.args[0].full_url).query)["page"] for call in wordpress.call_args_list]
         self.assertEqual(requested_pages, [["1"], ["2"]])
 
@@ -187,7 +197,7 @@ class IntegrationTests(unittest.TestCase):
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(len(body["places"]), 22)
+        self.assertEqual(len(body["places"]), 289)
         self.assertEqual(len(body["routes"]), 5)
         destinations = [row for row in body["places"] if row["category"] == "destination"]
         self.assertEqual({row["id"] for row in destinations}, {row.id for row in self.destinations})
@@ -245,13 +255,47 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         ids = [row["id"] for row in response.json()["places"]]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertIn("poi-trebisnjica", ids)
+        self.assertIn("poi_1", ids)
 
-    def test_missing_poi_catalogue_never_returns_partial_success(self):
-        with patch("main.Path.read_text", side_effect=OSError("catalogue unavailable")):
+    def test_invalid_route_links_and_duplicate_pois_never_return_partial_success(self):
+        catalogue = self.catalogue
+        broken = []
+        for mutate in [
+            lambda data: data["route_poi_ids"]["route_1590"].append("poi_unknown"),
+            lambda data: data["route_poi_ids"]["route_1590"].append("poi_1"),
+            lambda data: data["route_poi_ids"].pop("route_1590"),
+            lambda data: data["places"].append(data["places"][0]),
+        ]:
+            data = json.loads(json.dumps(catalogue))
+            mutate(data)
+            broken.append(data)
+        for data in broken:
+            with self.subTest(), patch("main.fetch_tourism_catalogue", return_value=data), patch("main.urlopen") as wordpress:
+                response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+                self.assertEqual(response.status_code, 503)
+                self.assertNotIn("places", response.json())
+                wordpress.assert_not_called()
+
+    def test_unavailable_csv_never_returns_partial_success_or_snapshot_fallback(self):
+        with patch("main.fetch_tourism_catalogue", side_effect=URLError("CSV unavailable")), patch("main.urlopen") as wordpress:
             response = self.client.get("/api/v1/integration/tourism", headers=self.headers)
         self.assertEqual(response.status_code, 503)
         self.assertNotIn("places", response.json())
+        wordpress.assert_not_called()
+
+    def test_next_request_reads_updated_csv_data_without_local_catalogue_file(self):
+        updated = json.loads(json.dumps(self.catalogue))
+        updated["places"][0]["name"] = "Updated name from CSV"
+        with patch("main.fetch_tourism_catalogue", side_effect=[self.catalogue, updated]) as source, \
+             patch("main.Path.read_text", side_effect=OSError("no local snapshot")), \
+             patch("main.urlopen", side_effect=[self.wp_response([]), self.wp_response([])]):
+            first = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+            second = self.client.get("/api/v1/integration/tourism", headers=self.headers)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(source.call_count, 2)
+        self.assertEqual(next(p["name"] for p in second.json()["places"] if p["id"] == "poi_1"), "Updated name from CSV")
+        self.assertNotEqual(first.json()["places"], second.json()["places"])
 
     def test_wordpress_failure_never_returns_a_partial_success(self):
         for failure in [URLError("unavailable"), self.wp_response({"error": "not a collection"}),

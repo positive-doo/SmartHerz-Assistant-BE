@@ -11,7 +11,7 @@ Swagger is available at `/docs` when the service is running.
 | --- | --- | --- |
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
-| `GET` | `/api/v1/integration/tourism` | 14 curated POIs and live WordPress destinations, routes and events; integration API key required. |
+| `GET` | `/api/v1/integration/tourism` | Live public CSV POIs and route membership, plus WordPress destinations/events; integration API key required. |
 | `GET` | `/api/v1/integration/kpis` | Aggregated recorded SQL sessions for an inclusive UTC date range; integration API key required. |
 | `POST` | `/api/chat` | Answers a prompt and uses local AgroTour and knowledge-search tools when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |

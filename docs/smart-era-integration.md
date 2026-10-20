@@ -1,8 +1,25 @@
 # SMART-HERZ / SMART ERA integracija
 
-Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Početni tourism izvoz obuhvata 14 stvarnih POI-ja iz postojećeg frontend kataloga, uz osam destinacija, pet ruta i dostupne događaje iz javnog WordPress API-ja. To je ograničeni početni skup, a ne kompletan katalog svih turističkih lokacija regiona.
+Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Tourism preuzima osnovne POI podatke i pripadnost rutama direktno iz šest javnih Google CSV tabova pri svakom pozivu. Provera 20.10.2026. obuhvatila je 281 POI, osam destinacija, pet ruta i sedam događaja; broj POI-ja i veza prati buduće promene izvora.
 
-Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url` i `category=destination`; rute `id`, `name` i `url`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI zapisi u `data/integration_pois.json` preuzeti su iz `SmartHerz-Assistant-FE/src/data/rightSuggestions.ts`: sačuvani su postojeći `poi-*` ID-jevi, nazivi, opisi na lokalnom jeziku i izvorni URL-ovi. Katalog se menja kroz verzionisanje tog fajla. Geografske koordinate i liste lokacija po rutama nisu deo ovog početnog skupa.
+Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url` i `category=destination`; rute `id`, `name`, `url` i `poi_ids`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI podaci dolaze iz kartice `svi POI`: ID, naziv i opština. Liste `poi_ids` dolaze iz pet tabova ruta, sa po jednim istim ID-jem unutar rute. Opisi, koordinate i slike iz drugih tabova nisu deo ovog izvoza.
+
+`integration_tourism.py` čita CSV standardnom Python bibliotekom; nema novog servisa, raspoređivača, tabele ili runtime zavisnosti. Pri svakom zahtevu preuzima svih šest tabova, proverava zaglavlja, jedinstvene ID-jeve, nazive, opštine i reference ruta. Ne izvršava formule. Nema lokalnog keša niti rezervnog starog kataloga. Izvorni XLSX korišćen je za nezavisnu proveru i testni primer u `tests/fixtures/tourism_20261020.json`; backend ga ne čita.
+
+Javni CSV izvori pronađeni su u otvorenoj izvornoj Google tabeli i provereni 20.10.2026. Svih šest URL-ova vraća HTTP 200 bez kolačića, API ključa ili prijavljivanja; ID-jevi, nazivi i veze ruta poklapaju se sa XLSX uvozom. Oblik URL-a je `https://docs.google.com/spreadsheets/d/1V2hZb7GYw0beX2_1-_qV8q4DXk1qVMqU0cPJ2YKAqJc/export?format=csv&gid=<gid>`:
+
+| Tab | gid |
+| --- | --- |
+| svi POI | 944979171 |
+| staza-ukusa-bs | 0 |
+| price-u-kamenu-bs | 1374632835 |
+| izmedju-planina-i-neba-bs | 1806306056 |
+| hercegovina-za-porodicu-bs | 301949931 |
+| staza-vode-i-krsa-bs | 1724113342 |
+
+Promene objavljenih CSV podataka ulaze u naredno uspešno preuzimanje endpointa. Šest tabova preuzima se odvojeno; ako su tokom uređivanja međusobno neusaglašeni, zahtev vraća 503 i može se ponoviti po završetku izmene.
+
+ID-jevi su `poi_<ID iz glavne kartice>`, npr. `poi_1`; nasleđeni frontend `poi-*` ID-jevi zamenjeni su novim katalogom. Potpuna sinhronizacija treba da zameni stari skup, a ne da mu doda duplikate. Vlasnik tabele treba da sačuva dodeljene brojeve kada se redovi dodaju ili preuređuju; izvorna tabela većinu ID-jeva računa formulama. Backend čuva dodeljeni broj i ne prepoznaje samostalno da je neki POI prebrojan.
 
 ## Pokretanje lokalno
 
@@ -88,9 +105,9 @@ Stare `create/link/revoke --partner` komande su zamenjene AdminApp upravljanjem.
 
 `GET /api/v1/integration/tourism`
 
-Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. `places` sadrži osam destinacija i 14 POI-ja, a `routes` pet ruta. WordPress ID-jevi imaju prefikse `destination_`, `route_` i `event_`; POI-jevi zadržavaju postojeće frontend ID-jeve sa prefiksom `poi-`. Zaglavlje `X-SmartHerz-Data-Mode: curated-pois-live-wordpress` označava lokalno uređeni POI katalog i žive WordPress izvore. Nema demo zapisa.
+Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. Na proveri 20.10.2026. `places` sadrži osam destinacija i 281 POI (ukupno 289), a `routes` pet ruta sa ukupno 481 jedinstvenom vezom ruta–POI. WordPress ID-jevi imaju prefikse `destination_`, `route_` i `event_`; POI-jevi koriste `poi_<ID iz glavne kartice>`. Zaglavlje `X-SmartHerz-Data-Mode: live-csv-live-wordpress` označava žive CSV i WordPress izvore. Nema demo POI zapisa.
 
-Osnovna polja zapisa su `id`, `name`, opciono `description` i `url`. `places` ima i `category` (`destination` za opštine) i opcioni `slug`. Događaji imaju dostupne `start_date` i `end_date` u formatu `YYYY-MM-DD`; to su lokalni datumi portala `Europe/Sarajevo`, bez izmišljanja vremena početka. HTML naslova/opisa pretvara se u običan tekst. Nepopunjena tourism polja se izostavljaju.
+Osnovna polja zapisa su `id`, `name`, opciono `description` i `url`. `places` ima i `category` (`destination` za opštine) i opcioni `slug`. Uvezeni POI-jevi imaju `municipality`, izvorni naziv opštine (za dve planine to je tekst sa dve opštine). `routes[].poi_ids` referiše na ID-jeve u `places`. To je pripadnost tematskoj ruti, ne potvrđen itinerer ili geometrija staze. Događaji imaju dostupne `start_date` i `end_date` u formatu `YYYY-MM-DD`; to su lokalni datumi portala `Europe/Sarajevo`, bez izmišljanja vremena početka. HTML naslova/opisa pretvara se u običan tekst. Nepopunjena tourism polja se izostavljaju.
 
 Skraćen primer:
 
@@ -99,10 +116,10 @@ Skraćen primer:
   "generated_at": "2026-10-13T08:00:00Z",
   "places": [
     {"id": "destination_347", "name": "Trebinje", "category": "destination", "slug": "trebinje", "url": "https://smart-herz.modoos.rs/destinacije/trebinje/"},
-    {"id": "poi-trebisnjica", "name": "Trebišnjica", "category": "poi", "url": "https://smart-herz.modoos.rs/destinacije/trebinje"}
+    {"id": "poi_1", "name": "Manastir Tvrdoš", "category": "poi", "municipality": "Trebinje"}
   ],
   "routes": [
-    {"id": "route_1590", "name": "Staza ukusa – Istočna Hercegovina", "url": "https://smart-herz.modoos.rs/tematske-rute/staza-ukusa-istocna-hercegovina/"}
+    {"id": "route_1590", "name": "Staza ukusa – Istočna Hercegovina", "url": "https://smart-herz.modoos.rs/tematske-rute/staza-ukusa-istocna-hercegovina/", "poi_ids": ["poi_1", "poi_2", "poi_3", "poi_4", "poi_5", "poi_6"]}
   ],
   "events": [
     {"id": "event_1153", "name": "Dabarska kotlićijada", "url": "https://smart-herz.modoos.rs/events/dabarska-kotlicijada/", "start_date": "2027-06-06", "end_date": "2027-06-06"}
@@ -110,9 +127,9 @@ Skraćen primer:
 }
 ```
 
-Svaki poziv preuzima osnovne podatke 13 poznatih stranica destinacija/ruta i sve WordPress stranice događaja. Proverava broj zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun spisak ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Nedostupan ili neispravan lokalni POI fajl takođe vraća 503; nema delimičnog uspešnog izvoza.
+Svaki poziv preuzima svih šest CSV tabova, osnovne podatke 13 poznatih WordPress stranica destinacija/ruta i sve stranice događaja. Proverava broj WordPress zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Prazan glavni POI tab, ponovljeni POI ID-jevi ili nepostojeći POI u listi rute takođe vraćaju 503. Ponovljeno pojavljivanje istog POI-ja u istoj tematskoj ruti spaja se u jednu vezu.
 
-SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju dogovorenog skupa. Početni skup je namerno ograničen na postojeći uređeni katalog; ne predstavlja sve POI-je u svih osam opština. Potpuniji CSV izvor može se povezati naknadno. Geometrija ruta, redosled stanica i opisi koji nisu strukturisani ne izmišljaju se.
+SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju dogovorenog skupa. Zato svaki poziv automatski čita aktuelne dostupne CSV podatke. Nema posebnog pozadinskog posla. Geometrija ruta, redosled obilaska i opisi koji nisu usaglašeni ne izmišljaju se.
 
 ## KPI statistika
 

@@ -45,6 +45,7 @@ from docx.oxml.ns import qn
 from database import sql_connection as _sql_connection
 from hybrid_search import search_knowledge
 from integration_key_links import require_partner_key, router as integration_key_links_router
+from integration_tourism import fetch_tourism_catalogue
 from link_validation import sanitize_tool_result
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -210,6 +211,7 @@ class IntegrationPlace(BaseModel):
     description: str | None = None
     url: str | None = None
     slug: str | None = None
+    municipality: str | None = None
 
 
 class IntegrationRoute(BaseModel):
@@ -217,9 +219,14 @@ class IntegrationRoute(BaseModel):
     name: str
     description: str | None = None
     url: str | None = None
+    poi_ids: list[str] | None = None
 
 
-class IntegrationEvent(IntegrationRoute):
+class IntegrationEvent(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    url: str | None = None
     start_date: date | None = None
     end_date: date | None = None
 
@@ -406,24 +413,34 @@ def _fetch_integration_events() -> list[IntegrationEvent]:
     response_model_exclude_none=True,
     dependencies=[Depends(_require_integration_key)],
     tags=["SMART ERA integration"],
-    summary="Tourism export (curated POIs, live destinations, routes and events)",
+    summary="Tourism export (live CSV POIs and route membership, WordPress pages and events)",
     responses={401: {"description": "Invalid API key"}, 503: {"description": "Source unavailable"}},
 )
 def integration_tourism(response: Response) -> TourismResponse:
     try:
-        catalogue = json.loads((BASE_DIR / "data" / "integration_pois.json").read_text(encoding="utf-8"))
+        catalogue = fetch_tourism_catalogue()
+        pois = [IntegrationPlace.model_validate(record) for record in catalogue["places"]]
+        poi_ids = {record.id for record in pois}
+        route_members = catalogue["route_poi_ids"]
+        if not pois or len(poi_ids) != len(pois) or set(route_members) != {f"route_{page_id}" for page_id in _INTEGRATION_ROUTE_PAGE_IDS}:
+            raise ValueError("Invalid POI catalogue or route mapping.")
+        for members in route_members.values():
+            if not isinstance(members, list) or len(set(members)) != len(members) or not set(members) <= poi_ids:
+                raise ValueError("Duplicate or unknown POI in a route.")
         destinations, routes = _fetch_integration_pages()
+        for route in routes:
+            route.poi_ids = route_members[route.id]
         events = _fetch_integration_events()
         result = TourismResponse(
             generated_at=datetime.now(timezone.utc),
-            places=destinations + catalogue["places"],
+            places=destinations + pois,
             routes=routes,
             events=events,
         )
     except Exception as exc:
         logger.warning("Integration tourism source failed: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="Tourism source is temporarily unavailable.") from exc
-    response.headers["X-SmartHerz-Data-Mode"] = "curated-pois-live-wordpress"
+    response.headers["X-SmartHerz-Data-Mode"] = "live-csv-live-wordpress"
     return result
 
 
