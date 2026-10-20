@@ -13,7 +13,7 @@ Swagger is available at `/docs` when the service is running.
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
 | `GET` | `/api/v1/integration/tourism` | Live public CSV POIs and route membership, plus WordPress destinations/events; integration API key required. |
 | `GET` | `/api/v1/integration/kpis` | Aggregated recorded SQL sessions for an inclusive UTC date range; integration API key required. |
-| `POST` | `/api/chat` | Answers a prompt and uses local AgroTour and knowledge-search tools when needed. |
+| `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, and live CSV POIs/route membership when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
 | `POST` | `/tts` | Creates MP3 speech for supplied text or the latest assistant response. |
@@ -28,6 +28,13 @@ changes to the frontend source.
 `/api/chat/stream` accepts the same JSON body and emits `data:` events with
 `content` and `done` fields. The original JSON endpoint remains available for
 backward compatibility.
+
+Both chat endpoints can call `get_tourism_catalogue` to read the same six public
+CSV tabs as the integration export. The bot uses POI IDs, names, municipalities,
+and membership of five named thematic routes. It fetches current data when the
+model requests this tool; no new service, cache, ingestion job, or frontend
+change is required. Detailed descriptions still come from knowledge search.
+Route membership does not imply itinerary order, travel time, or distance.
 
 ## Environment
 

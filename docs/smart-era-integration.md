@@ -19,6 +19,8 @@ Javni CSV izvori pronađeni su u otvorenoj izvornoj Google tabeli i provereni 20
 
 Promene objavljenih CSV podataka ulaze u naredno uspešno preuzimanje endpointa. Šest tabova preuzima se odvojeno; ako su tokom uređivanja međusobno neusaglašeni, zahtev vraća 503 i može se ponoviti po završetku izmene.
 
+Isti CSV izvor koristi i bot kroz alat `get_tourism_catalogue`, dostupan i za običan i za streaming razgovor. Za osnovne POI podatke i pripadnost rutama model preuzima aktuelni katalog, sa nazivima pet postojećih ruta, i bira relevantne zapise prema pitanju, istoriji i filterima. To ne zahteva promenu frontenda ni unos podataka u novu bazu. Opisi ostaju u postojećoj pretrazi znanja; katalog ne potvrđuje redosled obilaska, udaljenost ili trajanje. Ako CSV nije dostupan, alat vraća jasnu grešku i model treba da navede da aktuelni spisak nije mogao da proveri.
+
 ID-jevi su `poi_<ID iz glavne kartice>`, npr. `poi_1`; nasleđeni frontend `poi-*` ID-jevi zamenjeni su novim katalogom. Potpuna sinhronizacija treba da zameni stari skup, a ne da mu doda duplikate. Vlasnik tabele treba da sačuva dodeljene brojeve kada se redovi dodaju ili preuređuju; izvorna tabela većinu ID-jeva računa formulama. Backend čuva dodeljeni broj i ne prepoznaje samostalno da je neki POI prebrojan.
 
 ## Pokretanje lokalno
