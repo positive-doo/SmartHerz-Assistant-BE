@@ -153,7 +153,9 @@ Oba datuma su obavezna, striktno `YYYY-MM-DD`, uključiva i sa UTC značenjem. P
 - `recommendations_generated`: `null`, jer broj preporuka nije zasebno evidentiran.
 - `average_session_duration_seconds`: prosek validnih `closed_at - created_at` za sesije započete u periodu; `null` kada nema zabeleženih završetaka. Negativna trajanja se ne uključuju. Ne procenjuje se trajanje iz poruka.
 
-SQL provera 16.10.2026. pokazuje ukupno 42 sesije, poslednju od 21.08.2026. Aktuelni backend nove razgovore čuva u memoriji i ne upisuje nove SQL sesije. Zato broj opisuje samo postojeće evidentirane SQL sesije; nula za oktobar ne dokazuje odsustvo upotrebe aplikacije. Sva postojeća trajanja su nedostupna. Nova telemetrija nije deo implementacije.
+SQL provera pre ove izmene pokazala je 42 stare sesije, poslednju od 21.08.2026. Nova verzija nakon uspešnog običnog ili streaming odgovora upisuje jednu anonimnu sesiju u postojeću `chat.Threads`, a pri sledećim odgovorima ažurira `last_message_at`. Sesija koristi postojeći jednosatni rok neaktivnosti; novi objekat sesije dobija nov nasumičan SQL ID. `created_at` je vreme prvog uspešnog odgovora u UTC. Istorijski podaci ostaju netaknuti i raniji razgovori koji nisu evidentirani ne mogu se naknadno izračunati. Ne čuvaju se tekst razgovora, lični podaci ili identifikatori iz browsera.
+
+Backend nalog već ima SELECT, INSERT i UPDATE prava nad ovom tabelom; nisu potrebne nove tabele ili DDL. Greška upisa se beleži u serverski log i ne prekida uspešan odgovor korisniku. `closed_at` se ne popunjava procenom iz poslednje aktivnosti; prosečno trajanje i broj preporuka ostaju `null` dok ti podaci nemaju zasebno, dogovoreno merenje.
 
 Odgovor sadrži samo agregate, bez identifikatora korisnika/sesija i sadržaja razgovora. SQL nedostupnost vraća 503; ne zamenjuje se nulom ili demo podacima.
 

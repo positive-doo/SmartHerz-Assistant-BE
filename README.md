@@ -36,6 +36,20 @@ model requests this tool; no new service, cache, ingestion job, or frontend
 change is required. Detailed descriptions still come from knowledge search.
 Route membership does not imply itinerary order, travel time, or distance.
 
+When CSV data is used, chat JSON and the final SSE event include optional
+`recommendations` with source IDs, names, categories and POI municipalities.
+The frontend renders matching POI/route cards without requiring partner API
+keys, missing images, or descriptions. Failed CSV retrieval sends an empty
+card list; conversations which do not use CSV retain the existing card flow.
+
+After each completed successful answer, the backend upserts anonymous session
+metadata into the existing `chat.Threads` table. Turns in the same in-memory
+session share one thread ID. Only app ID, a random thread ID, the UTC creation
+time and latest message time are stored; no message text or visitor details.
+This supplies new session counts to the existing KPI endpoint after rollout.
+Recommendation counts and session duration remain unavailable (`null`); the
+last activity time is not treated as a measured session close time.
+
 ## Environment
 
 Set these variables in Azure Container Apps. For local development, the same

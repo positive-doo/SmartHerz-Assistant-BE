@@ -50,8 +50,10 @@ class TourismChatTests(unittest.TestCase):
              patch('main.get_assistant_instructions', return_value=main.TOURISM_INSTRUCTIONS), \
              patch('main.fetch_tourism_catalogue', return_value=self.catalogue), \
              patch('main.search_knowledge', return_value={'results': []}) as knowledge:
-            answer = main.answer_query('U kojoj ruti je Planina Crvanj?')
+            catalogue = {}
+            answer = main.answer_query('U kojoj ruti je Planina Crvanj?', catalogue_out=catalogue)
         self.assertEqual(answer, 'Verified answer')
+        self.assertEqual(catalogue['places'], self.catalogue['places'])
         knowledge.assert_called_once_with('U kojoj ruti je Planina Crvanj?')
         first_args = client.responses.create.call_args_list[0].kwargs
         self.assertIn(main.TOURISM_TOOL, first_args['tools'])
