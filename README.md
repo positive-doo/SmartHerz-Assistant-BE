@@ -13,7 +13,7 @@ Swagger is available at `/docs` when the service is running.
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
 | `GET` | `/api/v1/integration/tourism` | Live public CSV POIs and route membership, plus WordPress destinations/events; integration API key required. |
 | `GET` | `/api/v1/integration/kpis` | Aggregated recorded SQL sessions for an inclusive UTC date range; integration API key required. |
-| `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, and live CSV POIs/route membership when needed. |
+| `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, live CSV POIs/route membership, and WordPress events when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
 | `POST` | `/tts` | Creates MP3 speech for supplied text or the latest assistant response. |
@@ -35,6 +35,18 @@ and membership of five named thematic routes. It fetches current data when the
 model requests this tool; no new service, cache, ingestion job, or frontend
 change is required. Detailed descriptions still come from knowledge search.
 Route membership does not imply itinerary order, travel time, or distance.
+
+Both chat endpoints also use `get_tourism_events` for current WordPress event
+names, descriptions, dates, municipalities, and links. It shares the integration
+export's event adapter and resolves municipality names through `mec_category`.
+The tool includes the current UTC date and defaults to ongoing/future dated
+events; `include_past=true` is used for explicit requests about past events.
+The model applies the visitor's dates and municipality filters. Missing
+times, location details, and organizers are not inferred. An unavailable source
+is reported without substituting an old event list.
+
+The tourism export includes destination `updated_at` from WordPress
+`modified_gmt` in UTC, and an event `municipality` when a category is assigned.
 
 When CSV data is used, chat JSON and the final SSE event include optional
 `recommendations` with source IDs, names, categories and POI municipalities.

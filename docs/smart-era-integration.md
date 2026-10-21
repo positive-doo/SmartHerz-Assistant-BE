@@ -1,8 +1,8 @@
 # SMART-HERZ / SMART ERA integracija
 
-Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Tourism preuzima osnovne POI podatke i pripadnost rutama direktno iz šest javnih Google CSV tabova pri svakom pozivu. Provera 20.10.2026. obuhvatila je 281 POI, osam destinacija, pet ruta i sedam događaja; broj POI-ja i veza prati buduće promene izvora.
+Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Tourism preuzima osnovne POI podatke i pripadnost rutama direktno iz šest javnih Google CSV tabova pri svakom pozivu. Provera 21.10.2026. obuhvatila je 281 POI, osam destinacija, pet ruta i 36 događaja; broj zapisa prati promene izvora.
 
-Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url` i `category=destination`; rute `id`, `name`, `url` i `poi_ids`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI podaci dolaze iz kartice `svi POI`: ID, naziv i opština. Liste `poi_ids` dolaze iz pet tabova ruta, sa po jednim istim ID-jem unutar rute. Opisi, koordinate i slike iz drugih tabova nisu deo ovog izvoza.
+Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url`, `category=destination` i `updated_at` iz WordPress `modified_gmt`, sa UTC vremenskom zonom; rute `id`, `name`, `url` i `poi_ids`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI podaci dolaze iz kartice `svi POI`: ID, naziv i opština. Liste `poi_ids` dolaze iz pet tabova ruta, sa po jednim istim ID-jem unutar rute. Opisi, koordinate i slike iz drugih tabova nisu deo ovog izvoza.
 
 `integration_tourism.py` čita CSV standardnom Python bibliotekom; nema novog servisa, raspoređivača, tabele ili runtime zavisnosti. Pri svakom zahtevu preuzima svih šest tabova, proverava zaglavlja, jedinstvene ID-jeve, nazive, opštine i reference ruta. Ne izvršava formule. Nema lokalnog keša niti rezervnog starog kataloga. Izvorni XLSX korišćen je za nezavisnu proveru i testni primer u `tests/fixtures/tourism_20261020.json`; backend ga ne čita.
 
@@ -20,6 +20,8 @@ Javni CSV izvori pronađeni su u otvorenoj izvornoj Google tabeli i provereni 20
 Promene objavljenih CSV podataka ulaze u naredno uspešno preuzimanje endpointa. Šest tabova preuzima se odvojeno; ako su tokom uređivanja međusobno neusaglašeni, zahtev vraća 503 i može se ponoviti po završetku izmene.
 
 Isti CSV izvor koristi i bot kroz alat `get_tourism_catalogue`, dostupan i za običan i za streaming razgovor. Za osnovne POI podatke i pripadnost rutama model preuzima aktuelni katalog, sa nazivima pet postojećih ruta, i bira relevantne zapise prema pitanju, istoriji i filterima. To ne zahteva promenu frontenda ni unos podataka u novu bazu. Opisi ostaju u postojećoj pretrazi znanja; katalog ne potvrđuje redosled obilaska, udaljenost ili trajanje. Ako CSV nije dostupan, alat vraća jasnu grešku i model treba da navede da aktuelni spisak nije mogao da proveri.
+
+Događaje bot preuzima kroz `get_tourism_events`, koristeći isti WordPress adapter kao partnerski izvoz. Alat vraća nazive, opise, datume, opštine i linkove, uz `as_of_date` (trenutni UTC datum). Podrazumevano vraća samo događaje čiji kraj (ili početak kada kraj nedostaje) nije pre tog datuma; nedatirani zapisi se tada izostavljaju. Parametar `include_past=true` služi samo za izričito tražene prošle događaje/datume. Partnerski izvoz i dalje sadrži sve objavljene događaje. Model bira prema pitanju i filterima putovanja. Nedostupan izvor vraća grešku bez stare rezervne liste. Tačna satnica, adresa/GPS i organizator/kontakt čekaju izlaganje tih polja na WordPress-u; ne zaključuju se iz ID-ja lokacije ili nepotpunog vremena početka.
 
 ID-jevi su `poi_<ID iz glavne kartice>`, npr. `poi_1`; nasleđeni frontend `poi-*` ID-jevi zamenjeni su novim katalogom. Potpuna sinhronizacija treba da zameni stari skup, a ne da mu doda duplikate. Vlasnik tabele treba da sačuva dodeljene brojeve kada se redovi dodaju ili preuređuju; izvorna tabela većinu ID-jeva računa formulama. Backend čuva dodeljeni broj i ne prepoznaje samostalno da je neki POI prebrojan.
 
@@ -111,20 +113,22 @@ Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. Na proveri 
 
 Osnovna polja zapisa su `id`, `name`, opciono `description` i `url`. `places` ima i `category` (`destination` za opštine) i opcioni `slug`. Uvezeni POI-jevi imaju `municipality`, izvorni naziv opštine (za dve planine to je tekst sa dve opštine). `routes[].poi_ids` referiše na ID-jeve u `places`. To je pripadnost tematskoj ruti, ne potvrđen itinerer ili geometrija staze. Događaji imaju dostupne `start_date` i `end_date` u formatu `YYYY-MM-DD`; to su lokalni datumi portala `Europe/Sarajevo`, bez izmišljanja vremena početka. HTML naslova/opisa pretvara se u običan tekst. Nepopunjena tourism polja se izostavljaju.
 
+Događaji dodatno imaju `municipality`, mapiran iz `mec_category` preko javnog `/wp-json/wp/v2/mec_category`. Nepopunjena kategorija izostavlja to polje; više opština navodi se jednom, odvojeno zarezom. Nepoznata referenca kategorije vraća grešku izvora, umesto pogrešnog naziva. Taksonomija se preuzima samo kada događaji imaju dodeljene kategorije.
+
 Skraćen primer:
 
 ```json
 {
-  "generated_at": "2026-10-13T08:00:00Z",
+  "generated_at": "2026-10-21T12:00:00Z",
   "places": [
-    {"id": "destination_347", "name": "Trebinje", "category": "destination", "slug": "trebinje", "url": "https://smart-herz.modoos.rs/destinacije/trebinje/"},
+    {"id": "destination_347", "name": "Trebinje", "category": "destination", "slug": "trebinje", "url": "https://smart-herz.modoos.rs/destinacije/trebinje/", "updated_at": "2026-10-20T21:54:05Z"},
     {"id": "poi_1", "name": "Manastir Tvrdoš", "category": "poi", "municipality": "Trebinje"}
   ],
   "routes": [
     {"id": "route_1590", "name": "Staza ukusa – Istočna Hercegovina", "url": "https://smart-herz.modoos.rs/tematske-rute/staza-ukusa-istocna-hercegovina/", "poi_ids": ["poi_1", "poi_2", "poi_3", "poi_4", "poi_5", "poi_6"]}
   ],
   "events": [
-    {"id": "event_1153", "name": "Dabarska kotlićijada", "url": "https://smart-herz.modoos.rs/events/dabarska-kotlicijada/", "start_date": "2027-06-06", "end_date": "2027-06-06"}
+    {"id": "event_2844", "name": "Memorijalni turnir u malom fudbalu „Mišo Tamindžija“", "url": "https://smart-herz.modoos.rs/events/memorijalni-turnir-u-malom-fudbalu-miso-tamindzija/", "start_date": "2026-12-16", "end_date": "2027-01-06", "municipality": "Nevesinje"}
   ]
 }
 ```

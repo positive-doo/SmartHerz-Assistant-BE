@@ -208,7 +208,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotIn("description", destinations[0])
         self.assertTrue(all("url" in row for row in body["routes"]))
         query = parse_qs(urlsplit(wordpress.call_args_list[0].args[0].full_url).query)
-        self.assertEqual(query["_fields"], ["id,title,slug,link"])
+        self.assertEqual(query["_fields"], ["id,title,slug,link,modified_gmt"])
         self.assertEqual(set(map(int, query["include"][0].split(","))),
                          set(main._INTEGRATION_DESTINATION_PAGE_IDS + main._INTEGRATION_ROUTE_PAGE_IDS))
 
