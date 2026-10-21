@@ -41,6 +41,10 @@ names, descriptions, dates, municipalities, and links. It shares the integration
 export's event adapter and resolves municipality names through `mec_category`.
 The tool includes the current UTC date and defaults to ongoing/future dated
 events; `include_past=true` is used for explicit requests about past events.
+The model receives today's UTC date before selecting tools. If the current
+question names a past year, the backend includes historical records even when
+the model incorrectly selects `include_past=false`; old conversation turns do
+not activate this override.
 The model applies the visitor's dates and municipality filters. Missing
 times, location details, and organizers are not inferred. An unavailable source
 is reported without substituting an old event list.

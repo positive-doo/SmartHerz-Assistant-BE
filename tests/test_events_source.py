@@ -153,6 +153,56 @@ class EventsSourceTests(unittest.TestCase):
                 self.assertEqual(json.loads(output['output']), sanitized)
                 self.assertEqual(final_args['tool_choice'], 'none')
 
+    def test_historical_year_overrides_wrong_flag_in_json_and_stream(self):
+        event = main.IntegrationEvent(
+            id='event_2816', name='Dučićeve večeri poezije', municipality='Trebinje',
+            start_date=date(2025, 11, 7), end_date=date(2025, 11, 9),
+        )
+        cases = [
+            ('Koji je termin Dučićevih večeri u Trebinju za novembar 2025?', True, []),
+            ('Prikaži događaje u 2027. godini.', False, []),
+            ('Koji su predstojeći događaji?', False, [
+                {'role': 'user', 'content': 'Ranije sam pitao za novembar 2025.'},
+            ]),
+        ]
+        for streaming in (False, True):
+            for query, expected_past, history in cases:
+                with self.subTest(streaming=streaming, query=query):
+                    client = MagicMock()
+                    client.responses.create.side_effect = [
+                        SimpleNamespace(output=[SimpleNamespace(
+                            type='function_call', name='get_tourism_events',
+                            call_id='events', arguments='{"include_past": false}',
+                        )], output_text=''),
+                        SimpleNamespace(output_text='Proveren termin.'),
+                    ]
+                    stream = client.responses.stream.return_value.__enter__.return_value
+                    stream.__iter__.return_value = iter([
+                        SimpleNamespace(type='response.output_text.delta', delta='Proveren termin.'),
+                    ])
+                    stream.get_final_response.return_value = SimpleNamespace(output_text='Proveren termin.')
+                    with patch.dict(os.environ, {'OPENAI_API_KEY': 'test-key'}), \
+                         patch('main.datetime', wraps=datetime) as clock, \
+                         patch('main.OpenAI', return_value=client), \
+                         patch('main.get_assistant_instructions', return_value='Instructions'), \
+                         patch('main._fetch_integration_events', return_value=[event]), \
+                         patch('main.sanitize_tool_result', side_effect=lambda value: value):
+                        clock.now.return_value = datetime(2026, 10, 21, 12, tzinfo=timezone.utc)
+                        if streaming:
+                            list(main.answer_query_stream(query, history=history))
+                            final_args = client.responses.stream.call_args.kwargs
+                        else:
+                            main.answer_query(query, history=history)
+                            final_args = client.responses.create.call_args_list[1].kwargs
+                    source = json.loads(final_args['input'][-1]['output'])
+                    self.assertEqual(bool(source['events']), expected_past)
+                    if expected_past:
+                        self.assertEqual(source['events'][0]['start_date'], '2025-11-07')
+                        self.assertEqual(source['events'][0]['end_date'], '2025-11-09')
+                        self.assertEqual(source['events'][0]['municipality'], 'Trebinje')
+                    self.assertIn('Current UTC date: 2026-10-21.',
+                                  client.responses.create.call_args_list[0].kwargs['instructions'])
+
 
 if __name__ == '__main__':
     unittest.main()

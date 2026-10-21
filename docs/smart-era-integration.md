@@ -23,6 +23,8 @@ Isti CSV izvor koristi i bot kroz alat `get_tourism_catalogue`, dostupan i za ob
 
 Događaje bot preuzima kroz `get_tourism_events`, koristeći isti WordPress adapter kao partnerski izvoz. Alat vraća nazive, opise, datume, opštine i linkove, uz `as_of_date` (trenutni UTC datum). Podrazumevano vraća samo događaje čiji kraj (ili početak kada kraj nedostaje) nije pre tog datuma; nedatirani zapisi se tada izostavljaju. Parametar `include_past=true` služi samo za izričito tražene prošle događaje/datume. Partnerski izvoz i dalje sadrži sve objavljene događaje. Model bira prema pitanju i filterima putovanja. Nedostupan izvor vraća grešku bez stare rezervne liste. Tačna satnica, adresa/GPS i organizator/kontakt čekaju izlaganje tih polja na WordPress-u; ne zaključuju se iz ID-ja lokacije ili nepotpunog vremena početka.
 
+Model dobija aktuelni UTC datum pre prvog izbora alata. Ako poslednje pitanje navodi prošlu godinu, backend uključuje i istorijske zapise čak i kada model greškom pošalje `include_past=false`. Godine iz ranijih poruka ne aktiviraju tu zaštitu pri novom pitanju za predstojeće događaje.
+
 ID-jevi su `poi_<ID iz glavne kartice>`, npr. `poi_1`; nasleđeni frontend `poi-*` ID-jevi zamenjeni su novim katalogom. Potpuna sinhronizacija treba da zameni stari skup, a ne da mu doda duplikate. Vlasnik tabele treba da sačuva dodeljene brojeve kada se redovi dodaju ili preuređuju; izvorna tabela većinu ID-jeva računa formulama. Backend čuva dodeljeni broj i ne prepoznaje samostalno da je neki POI prebrojan.
 
 ## Pokretanje lokalno

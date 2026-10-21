@@ -799,7 +799,11 @@ def _prepare_answer(
     input_items.append({"role": "user", "content": query})
     instructions = "\n\n".join(
         part
-        for part in (get_assistant_instructions(), _filter_instructions(filters))
+        for part in (
+            get_assistant_instructions(),
+            f"Current UTC date: {datetime.now(timezone.utc).date().isoformat()}.",
+            _filter_instructions(filters),
+        )
         if part
     )
     response = client.responses.create(
@@ -826,7 +830,15 @@ def _prepare_answer(
             tool_result = get_tourism_catalogue()
         elif tool_call.name == "get_tourism_events":
             arguments = json.loads(tool_call.arguments)
-            tool_result = get_tourism_events(include_past=arguments.get("include_past") is True)
+            # Do not hide an explicitly requested historical year behind a
+            # mistaken model flag. Inspect the current question, not old turns.
+            historical_year = any(
+                int(year) < datetime.now(timezone.utc).year
+                for year in re.findall(r"\b(?:19|20)\d{2}\b", query)
+            )
+            tool_result = get_tourism_events(
+                include_past=arguments.get("include_past") is True or historical_year,
+            )
         else:
             continue
         tool_result = sanitize_tool_result(tool_result)
