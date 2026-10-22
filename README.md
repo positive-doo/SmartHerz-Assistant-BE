@@ -3,6 +3,9 @@
 FastAPI backend for the SmartHerz chatbot demo. It implements the API contract
 already used by SmartHerz-FE and keeps the AgroTour integration as a local
 OpenAI function tool. No MCP server or separate tool repository is required.
+AgroTour search follows every API page until `has_more=false`, without a total
+result limit or a client-selected page size. Requests for all matching businesses
+use the complete result set; unrelated search results are not treated as matches.
 Swagger is available at `/docs` when the service is running.
 
 ## Endpoints
