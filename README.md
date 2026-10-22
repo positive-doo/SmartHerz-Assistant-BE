@@ -118,6 +118,14 @@ On Windows, PDF export uses `docx2pdf` and requires Microsoft Word to be
 installed. On Linux and in the provided Docker image, PDF export uses
 LibreOffice in headless mode.
 
+Travel-plan day headings should use `# Dan N — kratak opis dana`. The PDF
+renderer turns that heading into a colored two-column day block with the day
+number on the left and the label plus description on the right. The document
+uses Merriweather for headings and Source Sans 3 for body text. These fonts are
+bundled in `assets/fonts` and installed automatically by the Docker image; for
+local Windows conversion they should also be installed in Windows so Word does
+not substitute another font.
+
 Example request:
 
 ```powershell
