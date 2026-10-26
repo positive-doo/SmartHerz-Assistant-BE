@@ -56,6 +56,7 @@ from integration_tourism import fetch_tourism_catalogue
 
 from hybrid_search import search_knowledge
 from link_validation import sanitize_tool_result
+from weather import LOCAL_TIMEZONE, WEATHER_INSTRUCTIONS, WEATHER_TOOL, get_weather
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -258,7 +259,7 @@ EVENTS_TOOL = {
     "strict": True,
 }
 
-ASSISTANT_TOOLS = [AGROTOUR_TOOL, KNOWLEDGE_TOOL, TOURISM_TOOL, EVENTS_TOOL]
+ASSISTANT_TOOLS = [AGROTOUR_TOOL, KNOWLEDGE_TOOL, TOURISM_TOOL, EVENTS_TOOL, WEATHER_TOOL]
 
 TOURISM_ROUTE_NAMES = {
     "route_1590": "Staza ukusa – Istočna Hercegovina",
@@ -732,6 +733,7 @@ def get_assistant_instructions() -> str:
                 TRAVEL_PLAN_FORMAT_INSTRUCTIONS,
                 TOURISM_INSTRUCTIONS,
                 EVENTS_INSTRUCTIONS,
+                WEATHER_INSTRUCTIONS,
             )
             if part
         )
@@ -869,6 +871,7 @@ def _prepare_answer(
         for part in (
             get_assistant_instructions(),
             f"Current UTC date: {datetime.now(timezone.utc).date().isoformat()}.",
+            f"Current local date in Eastern Herzegovina (Europe/Sarajevo): {datetime.now(LOCAL_TIMEZONE).date().isoformat()}.",
             _filter_instructions(filters),
         )
         if part
@@ -905,6 +908,12 @@ def _prepare_answer(
             )
             tool_result = get_tourism_events(
                 include_past=arguments.get("include_past") is True or historical_year,
+            )
+        elif tool_call.name == "get_weather":
+            arguments = json.loads(tool_call.arguments)
+            tool_result = get_weather(
+                municipality=arguments.get("municipality"),
+                date_from=arguments.get("date_from"), date_to=arguments.get("date_to"),
             )
         else:
             continue

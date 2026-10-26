@@ -1,0 +1,9 @@
+# Preserve the current production image, dependencies and SQL pooling.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY main.py weather.py /app/
+COPY tests/test_weather.py /app/tests/test_weather.py
+COPY sql/004_smartherz_weather.sql /app/sql/004_smartherz_weather.sql
+COPY docs/weather.md /app/docs/weather.md
+COPY README.md requirements.txt /app/
+RUN python -m unittest tests.test_weather -q

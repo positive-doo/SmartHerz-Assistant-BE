@@ -8,6 +8,10 @@ result limit or a client-selected page size. Requests for all matching businesse
 use the complete result set; unrelated search results are not treated as matches.
 Swagger is available at `/docs` when the service is running.
 
+The `get_weather` assistant tool supplies MET Norway forecasts for the eight
+Eastern Herzegovina municipalities, for today and the next six days. See
+[weather configuration and limitations](docs/weather.md).
+
 ## Endpoints
 
 | Method | Path | Description |

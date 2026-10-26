@@ -1,5 +1,6 @@
 fastapi
 openai
+httpx
 pinecone
 pyodbc
 docx2pdf
