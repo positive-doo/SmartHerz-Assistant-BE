@@ -2,9 +2,9 @@ import io
 import json
 import os
 import unittest
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import main
 
@@ -36,6 +36,63 @@ class AgroTourPaginationTests(unittest.TestCase):
             self.assertEqual(parse_qs(urlsplit(request.full_url).query),
                              {"q": [prompt], "resource": ["all"], "offset": [str(offset)]})
             self.assertEqual(request.get_header("X-api-key"), "test-agrotour-key")
+            self.assertEqual(call.kwargs["timeout"], 20)
+
+    def test_first_page_timeout_retries_once_with_the_same_request(self):
+        for error in (TimeoutError("read timed out"), URLError(TimeoutError("read timed out"))):
+            with self.subTest(error=type(error).__name__), \
+                 patch("main.urlopen", side_effect=[error, io.BytesIO(json.dumps(page(0, 2, False)).encode())]) as source:
+                result = main.search_agrotour("Lunch in Trebinje")
+            self.assertEqual([row["id"] for row in result["data"]], ["0", "1"])
+            self.assertEqual(source.call_count, 2)
+            self.assertIs(source.call_args_list[0].args[0], source.call_args_list[1].args[0])
+            self.assertTrue(all(call.kwargs["timeout"] == 20 for call in source.call_args_list))
+
+    def test_later_page_timeout_retries_that_page_without_duplicate_results(self):
+        with patch("main.urlopen", side_effect=[
+            io.BytesIO(json.dumps(page(0, 50, True)).encode()),
+            TimeoutError("read timed out"),
+            io.BytesIO(json.dumps(page(50, 17, False)).encode()),
+        ]) as source:
+            result = main.search_agrotour("All producers")
+        self.assertEqual([row["id"] for row in result["data"]], list(map(str, range(67))))
+        self.assertEqual(result["meta"]["returned"], 67)
+        self.assertFalse(result["meta"]["has_more"])
+        offsets = [parse_qs(urlsplit(call.args[0].full_url).query)["offset"]
+                   for call in source.call_args_list]
+        self.assertEqual(offsets, [["0"], ["50"], ["50"]])
+
+    def test_timeout_while_reading_response_body_also_retries(self):
+        stalled_response = MagicMock()
+        stalled_response.__enter__.return_value.read.side_effect = TimeoutError("body timed out")
+        with patch("main.urlopen", side_effect=[
+            stalled_response, io.BytesIO(json.dumps(page(0, 1, False)).encode()),
+        ]) as source:
+            result = main.search_agrotour("Lunch")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertEqual(source.call_count, 2)
+        stalled_response.__exit__.assert_called_once()
+
+    def test_second_timeout_stops_and_does_not_return_a_partial_list(self):
+        with patch("main.urlopen", side_effect=[
+            io.BytesIO(json.dumps(page(0, 50, True)).encode()),
+            TimeoutError("first timeout"), URLError(TimeoutError("second timeout")),
+        ]) as source:
+            result = main.search_agrotour("All producers")
+        self.assertEqual(source.call_count, 3)
+        self.assertEqual(result, {"error": "AgroTour API is temporarily unavailable.", "data": []})
+
+    def test_non_timeout_failures_are_not_retried(self):
+        for error in (
+            HTTPError("https://example.test", 401, "Unauthorized", {}, None),
+            HTTPError("https://example.test", 503, "Unavailable", {}, None),
+            URLError("DNS failure"),
+        ):
+            with self.subTest(error=type(error).__name__), patch("main.urlopen", side_effect=error) as source:
+                result = main.search_agrotour("Lunch")
+            source.assert_called_once()
+            self.assertEqual(result["data"], [])
+            self.assertIn("error", result)
 
     def test_empty_complete_result_needs_only_one_request(self):
         with patch("main.urlopen", return_value=io.BytesIO(json.dumps(page(0, 0, False)).encode())) as source:

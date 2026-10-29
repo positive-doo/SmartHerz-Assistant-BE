@@ -6,6 +6,9 @@ OpenAI function tool. No MCP server or separate tool repository is required.
 AgroTour search follows every API page until `has_more=false`, without a total
 result limit or a client-selected page size. Requests for all matching businesses
 use the complete result set; unrelated search results are not treated as matches.
+Each AgroTour page uses a 20-second socket timeout. A timeout triggers one retry
+of that same page, including a timeout while reading its response body. Other
+errors are not retried; a failed page still discards the partial result set.
 Swagger is available at `/docs` when the service is running.
 
 The `get_weather` assistant tool supplies MET Norway forecasts for the eight

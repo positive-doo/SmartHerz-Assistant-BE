@@ -799,8 +799,16 @@ def search_agrotour(prompt: str) -> dict:
                     "X-API-Key": api_key,
                 },
             )
-            with urlopen(request, timeout=10) as response:
-                page = json.load(response)
+            for attempt in range(2):
+                try:
+                    with urlopen(request, timeout=20) as response:
+                        page = json.load(response)
+                    break
+                except (TimeoutError, URLError) as exc:
+                    timed_out = isinstance(exc, TimeoutError) or isinstance(exc.reason, TimeoutError)
+                    if not timed_out or attempt == 1:
+                        raise
+                    logger.warning("AgroTour request timed out; retrying page offset=%s", offset)
             rows, meta = page["data"], page["meta"]
             if not isinstance(rows, list) or not isinstance(meta, dict):
                 raise ValueError("Invalid AgroTour page.")
