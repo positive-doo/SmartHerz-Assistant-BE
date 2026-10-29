@@ -1,6 +1,6 @@
 import json
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -39,12 +39,12 @@ class UsageAndCardsTests(unittest.TestCase):
 
     def test_json_and_stream_return_cards_and_keep_one_session_per_cookie(self):
         sessions = []
-        def answer(query, history=None, filters=None, catalogue_out=None):
+        def answer(query, history=None, filters=None, catalogue_out=None, tool_runs_out=None):
             catalogue_out.update(CATALOGUE)
             return 'Planina Crvanj — Između planina i neba.'
         def stream(*args, **kwargs):
             yield answer(*args, **kwargs)
-        with patch('main._record_session_activity', side_effect=lambda s:sessions.append(s.sql_thread_id)), \
+        with patch('main.record_chat_turn', side_effect=lambda **kw:sessions.append(kw['thread_id'])), \
              patch('main.answer_query', side_effect=answer), patch('main.answer_query_stream', side_effect=stream):
             first = self.client.post('/api/chat', json={'query':'Crvanj'})
             second = self.client.post('/api/chat/stream', json={'query':'Koja ruta?'})
@@ -59,11 +59,11 @@ class UsageAndCardsTests(unittest.TestCase):
         self.assertNotEqual(other.sql_thread_id, sessions[0])
 
     def test_catalogue_and_cards_are_not_reused_by_another_request(self):
-        def answer(query, history=None, filters=None, catalogue_out=None):
+        def answer(query, history=None, filters=None, catalogue_out=None, tool_runs_out=None):
             if query == 'First':
                 catalogue_out.update(CATALOGUE)
             return 'Planina Crvanj'
-        with patch('main._record_session_activity'), patch('main.answer_query', side_effect=answer):
+        with patch('main.record_chat_turn'), patch('main.answer_query', side_effect=answer):
             first = self.client.post('/api/chat', json={'query':'First'})
             second = self.client.post('/api/chat', json={'query':'Second'})
         self.assertTrue(first.json()['recommendations'])
@@ -74,30 +74,24 @@ class UsageAndCardsTests(unittest.TestCase):
             kwargs['catalogue_out'].update(CATALOGUE)
             yield 'Planina Crvanj'
             raise RuntimeError('simulated failure')
-        with patch('main._record_session_activity') as activity, patch('main.answer_query_stream', side_effect=stream):
+        with patch('main.record_chat_turn') as activity, patch('main.answer_query_stream', side_effect=stream):
             response = self.client.post('/api/chat/stream', json={'query':'Crvanj'})
         activity.assert_not_called()
         final = json.loads(response.text.strip().split('\n\n')[-1][6:])
         self.assertIn('error', final)
         self.assertNotIn('recommendations', final)
 
-    def test_usage_writes_only_session_metadata_and_commits(self):
-        db = MagicMock()
-        context = MagicMock()
-        context.__enter__.return_value = db
+    def test_session_turn_passes_messages_and_scope_to_sql_writer(self):
         session = main.ChatSession()
-        with patch('main._sql_connection', return_value=context):
-            main._record_session_activity(session)
-        db.commit.assert_called_once()
-        sql, *values = db.cursor.return_value.execute.call_args.args
-        self.assertIn('UPDLOCK, HOLDLOCK', sql)
-        self.assertIn('last_message_at', sql)
-        self.assertNotIn('closed_at', sql)
-        self.assertNotIn('title', sql)
-        self.assertEqual(values, [session.sql_thread_id,66,session.sql_thread_id,66])
+        with patch('main.record_chat_turn') as writer:
+            main._store_session_turn(session, 'Pitanje', 'Odgovor', [])
+        writer.assert_called_once_with(
+            thread_id=session.sql_thread_id, app_id=66, client_id=18,
+            query='Pitanje', assistant_text='Odgovor', tool_runs=[], filters=None,
+        )
 
     def test_usage_failure_keeps_the_successful_chat_answer(self):
-        with patch('main._sql_connection', side_effect=RuntimeError('offline')), \
+        with patch('chat_persistence.sql_connection', side_effect=RuntimeError('offline')), \
              patch('main.answer_query', return_value='Uspešan odgovor'):
             response = self.client.post('/api/chat', json={'query':'Zdravo'})
         self.assertEqual(response.status_code, 200)

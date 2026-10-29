@@ -43,6 +43,23 @@ model requests this tool; no new service, cache, ingestion job, or frontend
 change is required. Detailed descriptions still come from knowledge search.
 Route membership does not imply itinerary order, travel time, or distance.
 
+Completed chat turns are recorded in the existing SQL `chat.Threads` and
+`chat.Messages` tables using the backend's `MSSQL_*` configuration. Each turn
+stores the user question, one `role='tool'` row per executed tool, and the final
+assistant answer in a single transaction. Tool `message_text` contains exactly
+the processed JSON sent to the model, not the raw HTTP response. JSON metadata
+in `augmented_prompt` links the rows with a turn ID and client ID, records the
+tool name, call ID and actual arguments, and keeps the user's structured filters.
+Anonymous messages use `sender='Anon'` and the session's existing SQL thread ID.
+No private packages, new tables, or frontend changes are required.
+
+SQL failures roll back the entire turn and log only the exception type; the chat
+answer still succeeds. Failed or interrupted generation is not recorded as a
+completed turn, even if a tool already returned data. This is best-effort storage
+after successful generation, without a retry queue or guaranteed delivery.
+Conversation context remains in memory; SQL persistence does not reload chat
+history or add old tool results to later model requests.
+
 Both chat endpoints also use `get_tourism_events` for current WordPress event
 names, descriptions, dates, municipalities, and links. It shares the integration
 export's event adapter and resolves municipality names through `mec_category`.

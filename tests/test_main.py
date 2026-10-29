@@ -19,7 +19,7 @@ class SmartHerzApiTests(unittest.TestCase):
         with main._sessions_lock:
             main._sessions.clear()
         main._prompt_cache = None
-        activity_patch = patch('main._record_session_activity')
+        activity_patch = patch('main.record_chat_turn')
         self.activity = activity_patch.start()
         self.addCleanup(activity_patch.stop)
         self.client = TestClient(main.app, base_url="http://localhost")
@@ -32,7 +32,7 @@ class SmartHerzApiTests(unittest.TestCase):
     def test_chat_contract_and_cookie_history(self) -> None:
         histories = []
 
-        def fake_answer(query, history=None, filters=None, catalogue_out=None):
+        def fake_answer(query, history=None, filters=None, catalogue_out=None, tool_runs_out=None):
             del filters
             histories.append(copy.deepcopy(history or []))
             return f"Odgovor: {query}"
@@ -56,7 +56,7 @@ class SmartHerzApiTests(unittest.TestCase):
     def test_chat_accepts_and_forwards_frontend_filters(self) -> None:
         captured_filters = []
 
-        def fake_answer(query, history=None, filters=None, catalogue_out=None):
+        def fake_answer(query, history=None, filters=None, catalogue_out=None, tool_runs_out=None):
             del query, history
             captured_filters.append(filters)
             return "Filtriran odgovor"

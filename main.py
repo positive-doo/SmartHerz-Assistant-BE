@@ -49,6 +49,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 from database import sql_connection as _sql_connection
+from chat_persistence import record_chat_turn
 from chat_recommendations import csv_recommendations
 from hybrid_search import search_knowledge
 from integration_key_links import require_partner_key, router as integration_key_links_router
@@ -858,6 +859,7 @@ def _prepare_answer(
     history: list[dict[str, str]] | None = None,
     filters: ChatFilters | None = None,
     catalogue_out: dict | None = None,
+    tool_runs_out: list[dict] | None = None,
 ) -> tuple[OpenAI, str, list, str | None]:
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not _configured(openai_api_key):
@@ -893,10 +895,13 @@ def _prepare_answer(
         # The model chooses the tool, but it cannot rewrite the user's query.
         logger.info("Executing assistant tool name=%s", tool_call.name)
         if tool_call.name == "search_agrotour":
+            arguments = {"prompt": query}
             tool_result = search_agrotour(query)
         elif tool_call.name == "search_knowledge":
+            arguments = {"prompt": query}
             tool_result = search_knowledge(query)
         elif tool_call.name == "get_tourism_catalogue":
+            arguments = {}
             tool_result = get_tourism_catalogue()
         elif tool_call.name == "get_tourism_events":
             arguments = json.loads(tool_call.arguments)
@@ -906,25 +911,33 @@ def _prepare_answer(
                 int(year) < datetime.now(timezone.utc).year
                 for year in re.findall(r"\b(?:19|20)\d{2}\b", query)
             )
-            tool_result = get_tourism_events(
-                include_past=arguments.get("include_past") is True or historical_year,
-            )
+            arguments = {"include_past": arguments.get("include_past") is True or historical_year}
+            tool_result = get_tourism_events(**arguments)
         elif tool_call.name == "get_weather":
             arguments = json.loads(tool_call.arguments)
-            tool_result = get_weather(
-                municipality=arguments.get("municipality"),
-                date_from=arguments.get("date_from"), date_to=arguments.get("date_to"),
-            )
+            arguments = {
+                "municipality": arguments.get("municipality"),
+                "date_from": arguments.get("date_from"), "date_to": arguments.get("date_to"),
+            }
+            tool_result = get_weather(**arguments)
         else:
             continue
         tool_result = sanitize_tool_result(tool_result)
+        output = json.dumps(tool_result, ensure_ascii=False)
+        if tool_runs_out is not None:
+            tool_runs_out.append({
+                "name": tool_call.name,
+                "call_id": tool_call.call_id,
+                "arguments": arguments,
+                "output": output,
+            })
         if tool_call.name == 'get_tourism_catalogue' and catalogue_out is not None:
             catalogue_out.update(tool_result)
         input_items.append(
             {
                 "type": "function_call_output",
                 "call_id": tool_call.call_id,
-                "output": json.dumps(tool_result, ensure_ascii=False),
+                "output": output,
             }
         )
 
@@ -936,12 +949,14 @@ def answer_query(
     history: list[dict[str, str]] | None = None,
     filters: ChatFilters | None = None,
     catalogue_out: dict | None = None,
+    tool_runs_out: list[dict] | None = None,
 ) -> str:
     client, instructions, input_items, direct_text = _prepare_answer(
         query,
         history,
         filters,
         catalogue_out,
+        tool_runs_out,
     )
     if direct_text is not None:
         if not direct_text:
@@ -966,12 +981,14 @@ def answer_query_stream(
     history: list[dict[str, str]] | None = None,
     filters: ChatFilters | None = None,
     catalogue_out: dict | None = None,
+    tool_runs_out: list[dict] | None = None,
 ) -> Iterator[str]:
     client, instructions, input_items, direct_text = _prepare_answer(
         query,
         history,
         filters,
         catalogue_out,
+        tool_runs_out,
     )
     if direct_text is not None:
         if not direct_text:
@@ -1043,7 +1060,13 @@ def _set_session_cookie(response: Response, session_id: str) -> None:
     )
 
 
-def _store_session_turn(session: ChatSession, query: str, assistant_text: str) -> None:
+def _store_session_turn(
+    session: ChatSession,
+    query: str,
+    assistant_text: str,
+    tool_runs: list[dict],
+    filters: ChatFilters | None = None,
+) -> None:
     with _sessions_lock:
         session.messages.extend(
             [
@@ -1054,27 +1077,15 @@ def _store_session_turn(session: ChatSession, query: str, assistant_text: str) -
         session.messages = session.messages[-MAX_HISTORY_MESSAGES:]
         session.latest_assistant_text = assistant_text
         session.expires_at = time() + CHAT_SESSION_TTL_SECONDS
-    _record_session_activity(session)
-
-
-def _record_session_activity(session: ChatSession) -> None:
-    """Record one anonymous SQL session and its latest successful answer."""
-    try:
-        with _sql_connection() as connection:
-            connection.timeout = 15
-            connection.cursor().execute(
-                """UPDATE chat.Threads WITH (UPDLOCK, HOLDLOCK)
-                   SET last_message_at = SYSUTCDATETIME()
-                   WHERE thread_id = ? AND app_id = ?;
-                   IF @@ROWCOUNT = 0
-                       INSERT INTO chat.Threads (thread_id, app_id, created_at, last_message_at)
-                       VALUES (?, ?, SYSUTCDATETIME(), SYSUTCDATETIME());""",
-                session.sql_thread_id, APP_ID, session.sql_thread_id, APP_ID,
-            )
-            connection.commit()
-    except Exception as exc:
-        # A statistics outage must not discard a successfully generated answer.
-        logger.warning('Session activity could not be recorded: %s', type(exc).__name__)
+    record_chat_turn(
+        thread_id=session.sql_thread_id,
+        app_id=APP_ID,
+        client_id=CLIENT_ID,
+        query=query,
+        assistant_text=assistant_text,
+        tool_runs=tool_runs,
+        filters=filters.model_dump(exclude_none=True) if filters is not None else None,
+    )
 
 
 def _sse_event(payload: dict) -> str:
@@ -1637,12 +1648,14 @@ def initialize_session(payload: InitSessionRequest, request: Request, response: 
 def chat(payload: ChatRequest, request: Request, response: Response) -> dict:
     session_id, session = _session_from_request(request)
     catalogue = {}
+    tool_runs = []
     try:
         assistant_text = answer_query(
             payload.query,
             history=session.messages,
             filters=payload.filters,
             catalogue_out=catalogue,
+            tool_runs_out=tool_runs,
         )
     except Exception as exc:
         logger.exception("Chat request failed")
@@ -1651,7 +1664,7 @@ def chat(payload: ChatRequest, request: Request, response: Response) -> dict:
             detail="The assistant is temporarily unavailable.",
         ) from exc
 
-    _store_session_turn(session, payload.query, assistant_text)
+    _store_session_turn(session, payload.query, assistant_text, tool_runs, payload.filters)
 
     _set_session_cookie(response, session_id)
     result = {
@@ -1673,12 +1686,14 @@ def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
     def events() -> Iterator[str]:
         assistant_text = ""
         catalogue = {}
+        tool_runs = []
         try:
             for delta in answer_query_stream(
                 payload.query,
                 history=history,
                 filters=payload.filters,
                 catalogue_out=catalogue,
+                tool_runs_out=tool_runs,
             ):
                 assistant_text += delta
                 yield _sse_event(
@@ -1686,7 +1701,7 @@ def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
                 )
             if not assistant_text:
                 raise RuntimeError("The model returned an empty streamed response.")
-            _store_session_turn(session, payload.query, assistant_text)
+            _store_session_turn(session, payload.query, assistant_text, tool_runs, payload.filters)
             final_event = {"content": assistant_text, "done": True}
             cards = csv_recommendations(assistant_text, catalogue)
             if cards is not None:
