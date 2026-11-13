@@ -4,7 +4,7 @@ Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Tourism preuzima o
 
 Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url`, `category=destination` i `updated_at` iz WordPress `modified_gmt`, sa UTC vremenskom zonom; rute `id`, `name`, `url` i `poi_ids`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI podaci dolaze iz kartice `svi POI`: ID, naziv i opština. Liste `poi_ids` dolaze iz pet tabova ruta, sa po jednim istim ID-jem unutar rute. Opisi, koordinate i slike iz drugih tabova nisu deo ovog izvoza.
 
-`integration_tourism.py` čita CSV standardnom Python bibliotekom; nema novog servisa, raspoređivača, tabele ili runtime zavisnosti. Pri svakom zahtevu preuzima svih šest tabova, proverava zaglavlja, jedinstvene ID-jeve, nazive, opštine i reference ruta. Ne izvršava formule. Nema lokalnog keša niti rezervnog starog kataloga. Izvorni XLSX korišćen je za nezavisnu proveru i testni primer u `tests/fixtures/tourism_20261020.json`; backend ga ne čita.
+`integration_tourism.py` pri svakom zahtevu čita svih šest živih CSV tabova i proverava zaglavlja, jedinstvene ID-jeve, nazive, opštine i reference ruta. Glavna kartica određuje ID svakog POI. Ako ruta koristi svoj broj, jedinstveno poklapanje naziva i opštine potvrđuje vezu sa glavnom karticom. Varijanta naziva može da se potvrdi istim glavnim ID-jem, opštinom i jedinstvenom fotografijom.
 
 Javni CSV izvori pronađeni su u otvorenoj izvornoj Google tabeli i provereni 20.10.2026. Svih šest URL-ova vraća HTTP 200 bez kolačića, API ključa ili prijavljivanja; ID-jevi, nazivi i veze ruta poklapaju se sa XLSX uvozom. Oblik URL-a je `https://docs.google.com/spreadsheets/d/1V2hZb7GYw0beX2_1-_qV8q4DXk1qVMqU0cPJ2YKAqJc/export?format=csv&gid=<gid>`:
 
@@ -19,7 +19,9 @@ Javni CSV izvori pronađeni su u otvorenoj izvornoj Google tabeli i provereni 20
 
 Promene objavljenih CSV podataka ulaze u naredno uspešno preuzimanje endpointa. Šest tabova preuzima se odvojeno; ako su tokom uređivanja međusobno neusaglašeni, zahtev vraća 503 i može se ponoviti po završetku izmene.
 
-Bot je ranije koristio isti CSV izvor. Od novembra 2026. chat koristi [provereni presek Excel kataloga](tourism-workbook.md). Partnerski izvoz zadržava žive izvore, ugovor i proveru potpunosti opisane ovde. Ako se identifikatori POI i ruta u javnim CSV tabovima ne podudaraju, partnerski izvoz vraća 503.
+Red u glavnoj kartici koji sadrži samo broj ne predstavlja POI zapis. Stavke označene kao lokalni biznis bez odgovarajućeg POI iz glavne kartice izvan su ugovorenog skupa. Crkva Svete Trojice na Gorici u Berkovićima ima privremeni izuzetak dok je dostupna samo u kartici rute bez ID-ja. Dodavanje glavnog POI zapisa sa stabilnim numeričkim ID-jem uključuje je u partnerski izvoz.
+
+Chat koristi [Excel katalog](tourism-workbook.md) kao izvor za POI, rute i udruženja i kao rezervni izvor za lokalne biznise kada AgroTour vrati grešku ili praznu listu.
 
 Događaje bot preuzima kroz `get_tourism_events`, koristeći isti WordPress adapter kao partnerski izvoz. Alat vraća nazive, opise, datume, opštine i linkove, uz `as_of_date` (trenutni UTC datum). Podrazumevano vraća samo događaje čiji kraj (ili početak kada kraj nedostaje) nije pre tog datuma; nedatirani zapisi se tada izostavljaju. Parametar `include_past=true` služi samo za izričito tražene prošle događaje/datume. Partnerski izvoz i dalje sadrži sve objavljene događaje. Model bira prema pitanju i filterima putovanja. Nedostupan izvor vraća grešku bez stare rezervne liste. Tačna satnica, adresa/GPS i organizator/kontakt čekaju izlaganje tih polja na WordPress-u; ne zaključuju se iz ID-ja lokacije ili nepotpunog vremena početka.
 
@@ -135,7 +137,7 @@ Skraćen primer:
 }
 ```
 
-Svaki poziv preuzima svih šest CSV tabova, osnovne podatke 13 poznatih WordPress stranica destinacija/ruta i sve stranice događaja. Proverava broj WordPress zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun ili neispravan izvor vraća 503, bez delimičnog uspešnog izvoza. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Prazan glavni POI tab, ponovljeni POI ID-jevi ili nepostojeći POI u listi rute takođe vraćaju 503. Ponovljeno pojavljivanje istog POI-ja u istoj tematskoj ruti spaja se u jednu vezu.
+Svaki poziv preuzima svih šest CSV tabova, osnovne podatke 13 poznatih WordPress stranica destinacija/ruta i sve stranice događaja. Proverava broj WordPress zapisa prema `X-WP-Total`, jedinstvenost ID-jeva i prisustvo svih očekivanih destinacija/ruta. Neuspešno preuzimanje, nepotpun ili neispravan izvor vraća 503. Prazna lista događaja je dozvoljena kada API uspešno potvrdi da ih nema. Prazan glavni POI tab, ponovljeni POI ID-jevi ili nepoznate i dvosmislene POI veze van opisanih slučajeva takođe vraćaju 503. Ponovljeno pojavljivanje istog POI-ja u istoj tematskoj ruti spaja se u jednu vezu.
 
 SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju dogovorenog skupa. Zato svaki poziv automatski čita aktuelne dostupne CSV podatke. Nema posebnog pozadinskog posla. Geometrija ruta, redosled obilaska i opisi koji nisu usaglašeni ne izmišljaju se.
 

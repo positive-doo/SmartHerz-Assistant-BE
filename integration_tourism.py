@@ -1,6 +1,7 @@
 """Read basic POI identities and thematic-route membership from public CSV tabs."""
 import csv
 import io
+from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from urllib.request import Request, urlopen
 
@@ -13,6 +14,10 @@ ROUTE_GIDS = {
     "route_2010": "301949931",
     "route_2144": "1724113342",
 }
+
+# This published route entry is present in the chat workbook but has no
+# canonical ID in the live POI master. Reconcile it normally once one exists.
+ROUTE_ONLY_POI = ("route_1699", "crkva svete trojice na gorici", "berkovići")
 
 
 def _text(value: str) -> str:
@@ -29,12 +34,12 @@ def _poi_id(value: str) -> str:
     return f"poi_{int(number)}"
 
 
-def _fetch_csv_rows(gid: str) -> list[tuple[str, str, str]]:
+def _fetch_csv_rows(gid: str) -> list[dict[str, str]]:
     request = Request(CSV_BASE + gid, headers={"Accept": "text/csv", "User-Agent": "SmartHerz-integration/1.0"})
     with urlopen(request, timeout=20) as response:
         reader = csv.reader(io.StringIO(response.read().decode("utf-8-sig")), strict=True)
-        headers = next(reader, [])
-        if [_text(value).casefold() for value in headers[:3]] != ["id", "naziv", "opstina"]:
+        headers = [_text(value).casefold() for value in next(reader, [])]
+        if headers[:3] != ["id", "naziv", "opstina"]:
             raise ValueError("Unexpected CSV identity columns.")
         records = []
         for row in reader:
@@ -43,34 +48,61 @@ def _fetch_csv_rows(gid: str) -> list[tuple[str, str, str]]:
                 continue
             if len(row) < 3:
                 raise ValueError("Incomplete CSV identity row.")
-            records.append(tuple(_text(value) for value in row[:3]))
+            if gid == POI_GID and not any(value.strip() for value in row[1:]):
+                # The sheet can retain an ID formula after the POI cells are cleared.
+                continue
+            records.append({header: _text(value) for header, value in zip(headers, row) if header})
         return records
+
+
+def _municipalities(value: str) -> set[str]:
+    return {part.strip().casefold() for part in value.split(",") if part.strip()}
 
 
 def fetch_tourism_catalogue() -> dict:
     """Download all six tabs on each export; never fall back to an old snapshot."""
     places = {}
-    for value, name, municipality in _fetch_csv_rows(POI_GID):
-        poi_id = _poi_id(value)
-        if poi_id in places or not name or not municipality:
+    names = defaultdict(list)
+    images = defaultdict(list)
+    for row in _fetch_csv_rows(POI_GID):
+        poi_id = _poi_id(row["id"])
+        name, municipality = row["naziv"], row["opstina"]
+        if poi_id in places or not name or not _municipalities(municipality):
             raise ValueError("Duplicate ID or missing POI name/municipality.")
         places[poi_id] = {"id": poi_id, "name": name, "category": "poi", "municipality": municipality}
+        names[name.casefold()].append(poi_id)
+        if image := row.get("thumbnail_url"):
+            images[image].append(poi_id)
     if not places:
         raise ValueError("The POI catalogue is empty.")
 
     routes = {}
     for route_id, gid in ROUTE_GIDS.items():
         members = []
-        for value, name, municipality in _fetch_csv_rows(gid):
-            poi_id = _poi_id(value)
-            canonical = places.get(poi_id)
-            if canonical is None or name.casefold() != canonical["name"].casefold():
-                raise ValueError("Unknown route POI or inconsistent name.")
-            listed = {part.strip().casefold() for part in municipality.split(",") if part.strip()}
-            actual = {part.strip().casefold() for part in canonical["municipality"].split(",")}
-            if not listed or not listed <= actual:
-                raise ValueError("Inconsistent route POI municipality.")
-            if poi_id not in members:
-                members.append(poi_id)
-        routes[route_id] = members
+        for row in _fetch_csv_rows(gid):
+            name, municipality = row["naziv"].casefold(), row["opstina"].casefold()
+            listed = _municipalities(municipality)
+            if not name or not listed:
+                raise ValueError("Incomplete route POI identity.")
+            raw_id = _poi_id(row["id"]) if row["id"] else None
+            matches = [poi_id for poi_id in names.get(name, ()) if listed <= _municipalities(places[poi_id]["municipality"])]
+            image_matches = images.get(row.get("thumbnail_url"), [])
+            local_business = row.get("kategorija", "").casefold() == "lokalni biznis" and row.get("tip", "").casefold() == "biznis"
+            if raw_id in matches:
+                members.append(raw_id)
+            elif len(matches) == 1:
+                # Route sheets can use their own numbering; retain the master ID.
+                members.append(matches[0])
+            elif (not matches and not local_business and raw_id in places and image_matches == [raw_id]
+                  and listed <= _municipalities(places[raw_id]["municipality"])):
+                # Same master ID, municipality and unique image corroborate a title variant.
+                members.append(raw_id)
+            elif not matches and (
+                local_business
+                or (raw_id is None and (route_id, name, municipality) == ROUTE_ONLY_POI)
+            ):
+                continue
+            else:
+                raise ValueError("Unknown or ambiguous route POI identity.")
+        routes[route_id] = list(dict.fromkeys(members))
     return {"places": list(places.values()), "route_poi_ids": routes}

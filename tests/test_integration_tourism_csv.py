@@ -41,6 +41,35 @@ class CsvTests(unittest.TestCase):
         self.assertEqual(len(second['places']), 3)
         self.assertEqual(second['places'][-1]['id'], 'poi_3')
 
+    def test_mixed_route_rows_use_canonical_ids_and_preserve_partner_scope(self):
+        master = [
+            [*self.master[0], "Thumbnail_URL"],
+            [*self.master[1], "poi-1.jpg"],
+            [*self.master[2], "poi-2.jpg"],
+            ["259", "", "", ""],
+        ]
+        headers = [*self.master[0], "Kategorija", "Tip", "Thumbnail_URL"]
+        taste = [headers,
+                 ["999", "POI, sa zarezom", "Trebinje", "Lokalni biznis", "biznis", ""],
+                 ["2", "Drugi biznis", "Gacko", "Lokalni biznis", "biznis", "poi-2.jpg"]]
+        culture = [headers,
+                   ["287", "Planina", "Gacko", "Kultura", "", "poi-2.jpg"],
+                   ["", "Crkva Svete Trojice na Gorici", "Berkovići", "Kultura", "", "gorica.jpg"]]
+        family = [headers, ["1", "Drugi naziv za POI", "Trebinje", "Kultura", "", "poi-1.jpg"]]
+        sources = [master, taste, culture, self.route, family, self.route]
+        with patch.object(tourism, "urlopen", side_effect=[response(rows) for rows in sources]):
+            result = tourism.fetch_tourism_catalogue()
+        self.assertEqual([place["id"] for place in result["places"]], ["poi_1", "poi_2"])
+        self.assertEqual(result["route_poi_ids"]["route_1590"], ["poi_1"])
+        self.assertEqual(result["route_poi_ids"]["route_1699"], ["poi_2"])
+        self.assertEqual(result["route_poi_ids"]["route_2010"], ["poi_1"])
+
+        # When the master gains a numeric ID, the same unnumbered route row resolves.
+        master.append(["300", "Crkva Svete Trojice na Gorici", "Berkovići", "gorica.jpg"])
+        with patch.object(tourism, "urlopen", side_effect=[response(rows) for rows in sources]):
+            result = tourism.fetch_tourism_catalogue()
+        self.assertEqual(result["route_poi_ids"]["route_1699"], ["poi_2", "poi_300"])
+
     def test_missing_empty_or_duplicate_master_ids_fail(self):
         cases = [[self.master[0]], [*self.master, self.master[1]], [self.master[0], ['', 'No ID','Trebinje']],
                  [self.master[0], ['1','', 'Trebinje']], [self.master[0], ['1','POI','']]]

@@ -1,0 +1,6 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY integration_tourism.py /app/
+COPY tests/test_integration_tourism_csv.py /app/tests/
+COPY docs/smart-era-integration.md /app/docs/
+RUN python -m unittest tests.test_integration_tourism_csv tests.test_integration -q
