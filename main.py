@@ -142,10 +142,11 @@ Use relevant AgroTour entries for each business they cover. When a question
 names several businesses, answer each separately. Check workbook_fallback for
 businesses or facts not covered by the live results. If AgroTour is unavailable,
 use the relevant workbook listings and explain that the list covers the catalogue.
-A village in a description and its municipality in a location field can both
-describe the same business. This rule takes precedence over earlier instructions
-to retry or use only AgroTour. Label workbook facts as catalogue information
-without live confirmation.
+Read village names and municipality fields as different levels of location.
+Report a conflict only when the sources give conflicting facts at the same
+level. These rules take precedence over earlier instructions to retry or use
+only AgroTour. Label workbook facts as catalogue information without live
+confirmation.
 The workbook does not confirm packages, availability, prices, opening hours,
 or booking details. Do not substitute a different municipality or business type
 unless the user asks for alternatives.
