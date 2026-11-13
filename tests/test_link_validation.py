@@ -1,4 +1,5 @@
 import unittest
+from threading import Barrier
 from urllib.error import HTTPError, URLError
 from unittest.mock import MagicMock, patch
 
@@ -48,6 +49,22 @@ class LinkValidationTests(unittest.TestCase):
             self.assertFalse(link_validation._returns_404("https://example.test/forbidden"))
             self.assertFalse(link_validation._returns_404("https://example.test/offline"))
             self.assertFalse(link_validation._returns_404("https://example.test/working"))
+            self.assertFalse(link_validation._returns_404("http://[invalid"))
+
+    def test_distinct_checks_can_overlap_and_cleanup_keeps_input_order(self) -> None:
+        started = Barrier(2)
+        working = "https://example.test/working"
+        missing = "https://example.test/missing"
+
+        def check(url):
+            started.wait(timeout=5)
+            return url == missing
+
+        with patch("link_validation._returns_404", side_effect=check) as mocked:
+            result = link_validation.sanitize_tool_result([working, missing, working])
+
+        self.assertEqual(result, [working, working])
+        self.assertEqual(mocked.call_count, 2)
 
     def test_non_http_values_do_not_trigger_checks(self) -> None:
         payload = {

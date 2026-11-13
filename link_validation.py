@@ -1,31 +1,47 @@
 import re
-from urllib.error import HTTPError, URLError
+from concurrent.futures import ThreadPoolExecutor
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+")
 TRAILING_PUNCTUATION = ".,;:!?)]}"
 _REMOVE = object()
+_LINK_CHECKS = ThreadPoolExecutor(max_workers=6, thread_name_prefix="link-check")
 
 
 def _returns_404(url: str) -> bool:
-    request = Request(
-        url,
-        headers={
-            "Range": "bytes=0-0",
-            "User-Agent": "SmartHerz-Assistant-BE/0.2",
-        },
-    )
     try:
+        request = Request(
+            url,
+            headers={
+                "Range": "bytes=0-0",
+                "User-Agent": "SmartHerz-Assistant-BE/0.2",
+            },
+        )
         with urlopen(request, timeout=4):
             return False
-    except HTTPError as exc:
-        return exc.code == 404
-    except (URLError, TimeoutError, ValueError):
+    except HTTPError as response:
+        with response:
+            return response.code == 404
+    except (OSError, ValueError):
         return False
 
 
+def _find_urls(value):
+    if isinstance(value, dict):
+        for item in value.values():
+            yield from _find_urls(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _find_urls(item)
+    elif isinstance(value, str):
+        for match in URL_PATTERN.finditer(value):
+            yield match.group(0).rstrip(TRAILING_PUNCTUATION)
+
+
 def sanitize_tool_result(value):
-    checked: dict[str, bool] = {}
+    urls = dict.fromkeys(_find_urls(value))
+    missing = {url for url, is_missing in zip(urls, _LINK_CHECKS.map(_returns_404, urls)) if is_missing}
 
     def sanitize(item):
         if isinstance(item, dict):
@@ -43,9 +59,7 @@ def sanitize_tool_result(value):
             raw_url = match.group(0)
             url = raw_url.rstrip(TRAILING_PUNCTUATION)
             suffix = raw_url[len(url) :]
-            if url not in checked:
-                checked[url] = _returns_404(url)
-            return suffix if checked[url] else raw_url
+            return suffix if url in missing else raw_url
 
         cleaned = URL_PATTERN.sub(replace, item).strip()
         return cleaned if cleaned else _REMOVE
