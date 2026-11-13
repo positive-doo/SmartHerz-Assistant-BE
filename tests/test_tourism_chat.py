@@ -140,16 +140,21 @@ class TourismChatTests(unittest.TestCase):
                 self.assertLessEqual(len(details), 8)
                 self.assertTrue(details[business["id"]]["description"])
 
-    def test_successful_agrotour_payload_reaches_the_model_without_loading_fallback(self):
+    def test_nonempty_agrotour_payload_keeps_live_rows_and_offers_workbook_for_no_match(self):
         query = "Gdje ručati u Nevesinju?"
-        answer = "AgroTour je pronašao restoran u Nevesinju."
+        answer = "U katalogu je Restoran Drenovik u Nevesinju."
         calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
-        upstream = {"data": [{"id": "3", "resource": "organisations", "record": {"business_name": "Drenovik"}}]}
-        with patch("main.search_agrotour", return_value=upstream), \
-             patch("main.workbook_business_fallback") as fallback:
-            _, outputs = self.call_chat("/api/chat", query, calls, answer)
-        fallback.assert_not_called()
-        self.assertEqual(outputs["agrotour"], upstream)
+        upstream = {"data": [{"id": "3", "resource": "organisations", "score": 0.8,
+                              "record": {"business_name": "Smještaj u Trebinju"}}],
+                    "meta": {"returned": 1, "has_more": False}}
+        for path in ("/api/chat", "/api/chat/stream"):
+            with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream):
+                _, outputs = self.call_chat(path, query, calls, answer)
+            result = outputs["agrotour"]
+            fallback = result.pop("workbook_fallback")
+            self.assertEqual(result, upstream)
+            self.assertEqual(fallback["source"], "workbook")
+            self.assertIn("Restoran Drenovik", {b["name"] for b in fallback["business_details"]})
 
 
 if __name__ == "__main__":

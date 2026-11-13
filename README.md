@@ -47,11 +47,12 @@ places when the workbook supports them. Pinecone remains available for
 supporting context. Route membership does not imply itinerary order, travel time,
 or distance. The partner export still uses the live CSV and WordPress sources.
 
-AgroTour remains the first source for business and package questions. When its
-search returns an error or an empty list, the backend adds the workbook's
-business catalogue to that tool result. A nonempty successful response is
-unchanged. Workbook listings do not confirm packages, availability, prices,
-opening hours, or bookings. See [refreshing the workbook snapshot](docs/tourism-workbook.md).
+AgroTour remains the first source for business and package questions. The chat
+tool gives the model both the AgroTour results and a separately labelled workbook
+catalogue. The model uses the workbook for local businesses when AgroTour is
+unavailable, returns an empty list, or has no result that matches the question.
+Workbook listings do not confirm packages, availability, prices, opening hours,
+or bookings. See [refreshing the workbook snapshot](docs/tourism-workbook.md).
 
 Completed chat turns are recorded in the existing SQL `chat.Threads` and
 `chat.Messages` tables using the backend's `MSSQL_*` configuration. Each turn

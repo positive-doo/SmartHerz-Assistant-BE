@@ -21,7 +21,7 @@ Promene objavljenih CSV podataka ulaze u naredno uspešno preuzimanje endpointa.
 
 Red u glavnoj kartici koji sadrži samo broj ne predstavlja POI zapis. Stavke označene kao lokalni biznis bez odgovarajućeg POI iz glavne kartice izvan su ugovorenog skupa. Crkva Svete Trojice na Gorici u Berkovićima ima privremeni izuzetak dok je dostupna samo u kartici rute bez ID-ja. Dodavanje glavnog POI zapisa sa stabilnim numeričkim ID-jem uključuje je u partnerski izvoz.
 
-Chat koristi [Excel katalog](tourism-workbook.md) kao izvor za POI, rute i udruženja i kao rezervni izvor za lokalne biznise kada AgroTour vrati grešku ili praznu listu.
+Chat koristi [Excel katalog](tourism-workbook.md) kao izvor za POI, rute i udruženja i kao rezervni izvor za lokalne biznise kada AgroTour ne pruži relevantan rezultat.
 
 Događaje bot preuzima kroz `get_tourism_events`, koristeći isti WordPress adapter kao partnerski izvoz. Alat vraća nazive, opise, datume, opštine i linkove, uz `as_of_date` (trenutni UTC datum). Podrazumevano vraća samo događaje čiji kraj (ili početak kada kraj nedostaje) nije pre tog datuma; nedatirani zapisi se tada izostavljaju. Parametar `include_past=true` služi samo za izričito tražene prošle događaje/datume. Partnerski izvoz i dalje sadrži sve objavljene događaje. Model bira prema pitanju i filterima putovanja. Nedostupan izvor vraća grešku bez stare rezervne liste. Tačna satnica, adresa/GPS i organizator/kontakt čekaju izlaganje tih polja na WordPress-u; ne zaključuju se iz ID-ja lokacije ili nepotpunog vremena početka.
 
