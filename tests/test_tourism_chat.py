@@ -44,6 +44,7 @@ class TourismChatTests(unittest.TestCase):
         self.assertIn(main.TOURISM_TOOL, provider.responses.create.call_args_list[0].kwargs["tools"])
         if path.endswith("/stream"):
             chunks = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+            self.assertTrue(all("map_location" not in chunk for chunk in chunks[:-1]))
             result = chunks[-1]
             self.assertTrue(result["done"])
             self.assertEqual(result["content"], answer)
@@ -108,6 +109,30 @@ class TourismChatTests(unittest.TestCase):
         self.assertTrue(result["error"])
         self.assertEqual(result["places"], [])
         self.assertEqual(result["routes"], [])
+
+    def test_only_one_verified_workbook_location_is_returned_with_the_final_answer(self):
+        def map_call(call_id, location, municipality):
+            return SimpleNamespace(
+                type="function_call", name="show_location_on_map", call_id=call_id,
+                arguments=json.dumps({"location": location, "municipality": municipality}),
+            )
+
+        platani = map_call("platani", "Платани", "Требиње")
+        no_coordinates = map_call("church", "Crkva Svete Trojice na Gorici", "Berkovići")
+        for path in ("/api/chat", "/api/chat/stream"):
+            with self.subTest(path=path):
+                result, outputs = self.call_chat(path, "Prikaži Platane na mapi.", [platani], "Platani u Trebinju.")
+                point = {"id": "poi_3", "name": "Platani", "latitude": 42.711094, "longitude": 18.345644}
+                self.assertEqual(result["map_location"], point)
+                self.assertEqual(outputs["platani"]["map_location"], point)
+
+                result, outputs = self.call_chat(path, "Prikaži crkvu na Gorici.", [no_coordinates], "Nema koordinata.")
+                self.assertNotIn("map_location", result)
+                self.assertIn("error", outputs["church"])
+
+                result, outputs = self.call_chat(path, "Prikaži oba mesta.", [platani, no_coordinates], "Izaberite jedno mesto.")
+                self.assertNotIn("map_location", result)
+                self.assertTrue(all("error" in output for output in outputs.values()))
 
     def test_both_chat_routes_use_workbook_focus_preserve_cards_and_coexist_with_knowledge_search(self):
         query = "A kojoj ruti pripada?"

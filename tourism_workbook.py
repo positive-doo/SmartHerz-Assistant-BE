@@ -2,6 +2,7 @@
 
 import json
 from functools import lru_cache
+from math import isfinite
 from pathlib import Path
 
 from chat_recommendations import normalized_words
@@ -14,6 +15,31 @@ DETAIL_LIMIT = 8
 def load_workbook_catalogue() -> dict:
     with SNAPSHOT_PATH.open(encoding="utf-8") as snapshot:
         return json.load(snapshot)
+
+
+def workbook_map_location(location: str, municipality: str | None) -> dict:
+    """Resolve one explicitly chosen POI using only the workbook coordinates."""
+    name = normalized_words(location)
+    town = normalized_words(municipality) if municipality else None
+    matches = [
+        place for place in load_workbook_catalogue()["places"]
+        if (place["id"] == location or normalized_words(place["name"]) == name)
+        and (town is None or any(
+            normalized_words(part) == town for part in place["municipality"].split(",")
+        ))
+    ]
+    if len(matches) != 1:
+        return {"error": "The workbook does not identify a unique place. Ask for the exact name and municipality."}
+    place = matches[0]
+    coordinates = place.get("coordinates", {})
+    lat, lon = coordinates.get("lat"), coordinates.get("lon")
+    if (type(lat) not in (int, float) or type(lon) not in (int, float)
+            or not isfinite(lat) or not isfinite(lon)
+            or not -90 <= lat <= 90 or not -180 <= lon <= 180):
+        return {"error": "The workbook has no verified coordinates for this place.", "name": place["name"]}
+    return {"map_location": {
+        "id": place["id"], "name": place["name"], "latitude": lat, "longitude": lon,
+    }}
 
 
 def _compact(record: dict, *fields: str) -> dict:
