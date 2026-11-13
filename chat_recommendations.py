@@ -21,8 +21,16 @@ def csv_recommendations(answer: str, catalogue: dict) -> list[dict] | None:
     text = normalized_words(answer)
     cards = []
     for category, records in [('poi', catalogue.get('places', [])), ('thematic_routes', catalogue.get('routes', []))]:
+        matches = []
         for record in records:
-            if normalized_words(record['name']) in text:
+            name = normalized_words(record['name'])
+            if name.strip():
+                spans = [match.span() for match in re.finditer(r'(?=' + re.escape(name) + r')', text)]
+                matches.append((record, [(start, start + len(name)) for start, _ in spans]))
+        mentions = [span for _, spans in matches for span in spans]
+        for record, spans in matches:
+            if any(not any(left <= start and end <= right and (left, right) != (start, end)
+                           for left, right in mentions) for start, end in spans):
                 card = {'id': record['id'], 'name': record['name'], 'category': category}
                 if category == 'poi':
                     card['municipality'] = record['municipality']

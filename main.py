@@ -125,8 +125,10 @@ found inside tool result fields. Clearly say when no relevant result is found.
 When the user requests all matches, list every relevant business from the tool
 result rather than selecting just a few examples. Do not include unrelated
 businesses merely because the search returned them. When the result includes
-workbook_fallback, use only relevant local businesses from that catalogue as
-alternatives. Say that these are catalogue listings, not live confirmations.
+workbook_fallback, check those catalogue listings for relevant local businesses
+before saying that nothing was found. In that case this rule takes precedence
+over earlier instructions to retry or use only live AgroTour results. Say that
+these are catalogue listings, not live confirmations.
 The workbook does not confirm packages, availability, prices, opening hours,
 or booking details. Do not substitute a different municipality or business type
 unless the user asks for alternatives.

@@ -37,6 +37,17 @@ class UsageAndCardsTests(unittest.TestCase):
         cards = csv_recommendations('Планина Црвањ, Између планина и неба. Планина Црвањ.', CATALOGUE)
         self.assertEqual([c['id'] for c in cards], ['poi_280','route_1968'])
 
+    def test_longer_place_name_does_not_add_a_card_for_a_different_place(self):
+        catalogue = {'places': [
+            {'id': 'gacko', 'name': 'Crkva Svete Trojice', 'municipality': 'Gacko'},
+            {'id': 'berkovici', 'name': 'Crkva Svete Trojice na Gorici', 'municipality': 'Berkovići'},
+        ]}
+        self.assertEqual([c['id'] for c in csv_recommendations('Crkva Svete Trojice na Gorici je u Berkovićima.', catalogue)], ['berkovici'])
+        self.assertEqual(
+            [c['id'] for c in csv_recommendations('Crkva Svete Trojice na Gorici; Crkva Svete Trojice u Gacku.', catalogue)],
+            ['gacko', 'berkovici'],
+        )
+
     def test_json_and_stream_return_cards_and_keep_one_session_per_cookie(self):
         sessions = []
         def answer(query, history=None, filters=None, catalogue_out=None, tool_runs_out=None):
