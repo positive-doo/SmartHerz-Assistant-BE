@@ -23,7 +23,7 @@ Eastern Herzegovina municipalities, for today and the next six days. See
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
 | `GET` | `/api/v1/integration/tourism` | Live public CSV POIs and route membership, plus WordPress destinations/events; integration API key required. |
 | `GET` | `/api/v1/integration/kpis` | Aggregated recorded SQL sessions for an inclusive UTC date range; integration API key required. |
-| `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, live CSV POIs/route membership, and WordPress events when needed. |
+| `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, the Smart ERA workbook catalogue, and WordPress events when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
 | `POST` | `/tts` | Creates MP3 speech for supplied text or the latest assistant response. |
@@ -39,12 +39,19 @@ changes to the frontend source.
 `content` and `done` fields. The original JSON endpoint remains available for
 backward compatibility.
 
-Both chat endpoints can call `get_tourism_catalogue` to read the same six public
-CSV tabs as the integration export. The bot uses POI IDs, names, municipalities,
-and membership of five named thematic routes. It fetches current data when the
-model requests this tool; no new service, cache, ingestion job, or frontend
-change is required. Detailed descriptions still come from knowledge search.
-Route membership does not imply itinerary order, travel time, or distance.
+Both chat endpoints use `get_tourism_catalogue` to read the bundled Smart ERA
+workbook snapshot. It provides POIs, thematic routes and their members, and
+published local associations. A compact index keeps the whole catalogue
+available, with descriptions and coordinates included for up to eight matching
+places when the workbook supports them. Pinecone remains available for
+supporting context. Route membership does not imply itinerary order, travel time,
+or distance. The partner export still uses the live CSV and WordPress sources.
+
+AgroTour remains the first source for business and package questions. When its
+search returns an error or an empty list, the backend adds the workbook's
+business catalogue to that tool result. A nonempty successful response is
+unchanged. Workbook listings do not confirm packages, availability, prices,
+opening hours, or bookings. See [refreshing the workbook snapshot](docs/tourism-workbook.md).
 
 Completed chat turns are recorded in the existing SQL `chat.Threads` and
 `chat.Messages` tables using the backend's `MSSQL_*` configuration. Each turn
@@ -79,11 +86,12 @@ is reported without substituting an old event list.
 The tourism export includes destination `updated_at` from WordPress
 `modified_gmt` in UTC, and an event `municipality` when a category is assigned.
 
-When CSV data is used, chat JSON and the final SSE event include optional
+When the workbook tourism catalogue is used, chat JSON and the final SSE event include optional
 `recommendations` with source IDs, names, categories and POI municipalities.
 The frontend renders matching POI/route cards without requiring partner API
-keys, missing images, or descriptions. Failed CSV retrieval sends an empty
-card list; conversations which do not use CSV retain the existing card flow.
+keys, images, or descriptions. If the workbook catalogue is unavailable the
+card list is empty; conversations that do not use the catalogue retain the
+existing card flow.
 
 After each completed successful answer, the backend upserts anonymous session
 metadata into the existing `chat.Threads` table. Turns in the same in-memory

@@ -2,84 +2,155 @@ import json
 import os
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
-from urllib.error import URLError
+from unittest.mock import MagicMock, patch
+
+from fastapi.testclient import TestClient
 
 import main
 
 
 class TourismChatTests(unittest.TestCase):
     def setUp(self):
-        self.catalogue = json.loads((main.BASE_DIR / 'tests/fixtures/tourism_20261020.json').read_text(encoding='utf-8'))
+        main._sessions.clear()
+        self.client = TestClient(main.app, base_url="https://localhost")
 
-    def test_chat_receives_complete_basic_catalogue_and_named_route_links(self):
-        with patch('main.fetch_tourism_catalogue', return_value=self.catalogue):
-            result = main.get_tourism_catalogue()
-        self.assertEqual(result['places'], self.catalogue['places'])
-        self.assertEqual(len(result['places']), 281)
-        self.assertEqual({r['id']: r['poi_ids'] for r in result['routes']}, self.catalogue['route_poi_ids'])
-        self.assertEqual(sum(len(r['poi_ids']) for r in result['routes']), 481)
-        crvanj = next(p for p in result['places'] if p['id'] == 'poi_280')
-        self.assertEqual(crvanj['municipality'], 'Nevesinje, Kalinovik')
-        self.assertEqual([r['name'] for r in result['routes'] if crvanj['id'] in r['poi_ids']], ['Između planina i neba'])
+    def call_chat(self, path, query, calls, answer):
+        provider = MagicMock()
+        provider.responses.create.side_effect = [
+            SimpleNamespace(output=calls, output_text=""),
+            SimpleNamespace(output_text=answer),
+        ]
+        stream = provider.responses.stream.return_value.__enter__.return_value
+        stream.__iter__.return_value = iter([
+            SimpleNamespace(type="response.output_text.delta", delta=answer),
+        ])
+        stream.get_final_response.return_value = SimpleNamespace(output_text=answer)
 
-    def test_tool_reads_again_and_does_not_cache_old_pois(self):
-        updated = json.loads(json.dumps(self.catalogue))
-        updated['places'][0]['name'] = 'Updated POI'
-        with patch('main.fetch_tourism_catalogue', side_effect=[self.catalogue, updated]) as source:
-            first, second = main.get_tourism_catalogue(), main.get_tourism_catalogue()
-        self.assertEqual(source.call_count, 2)
-        self.assertNotEqual(first['places'][0]['name'], second['places'][0]['name'])
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}), \
+             patch("main.OpenAI", return_value=provider), \
+             patch("main.get_assistant_instructions", return_value=main.TOURISM_INSTRUCTIONS), \
+             patch("main.fetch_tourism_catalogue") as live_csv, \
+             patch("main.record_chat_turn") as writer:
+            response = self.client.post(path, json={"query": query})
 
-    def test_source_failure_is_reported_without_partial_or_snapshot_data(self):
-        for error in [URLError('offline'), ValueError('inconsistent route')]:
-            with self.subTest(error=error), patch('main.fetch_tourism_catalogue', side_effect=error):
-                result = main.get_tourism_catalogue()
-            self.assertTrue(result['error'])
-            self.assertEqual(result['places'], [])
-            self.assertEqual(result['routes'], [])
+        self.assertEqual(response.status_code, 200)
+        live_csv.assert_not_called()
+        writer.assert_called_once()
+        self.assertEqual(writer.call_args.kwargs["assistant_text"], answer)
+        self.assertIn(main.TOURISM_TOOL, provider.responses.create.call_args_list[0].kwargs["tools"])
+        if path.endswith("/stream"):
+            chunks = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+            result = chunks[-1]
+            self.assertTrue(result["done"])
+            self.assertEqual(result["content"], answer)
+            synthesis = provider.responses.stream.call_args.kwargs
+        else:
+            result = response.json()
+            self.assertEqual(result["response"], answer)
+            synthesis = provider.responses.create.call_args_list[1].kwargs
 
-    def test_model_can_use_csv_with_other_tools_in_the_same_answer(self):
-        calls = [SimpleNamespace(type='function_call', name=name, call_id=name, arguments='{}')
-                 for name in ['get_tourism_catalogue', 'search_knowledge']]
-        client = Mock()
-        client.responses.create.side_effect = [SimpleNamespace(output=calls, output_text=''),
-                                               SimpleNamespace(output_text='Verified answer')]
-        with patch.dict(os.environ, {'OPENAI_API_KEY': 'test-key'}), \
-             patch('main.OpenAI', return_value=client), \
-             patch('main.get_assistant_instructions', return_value=main.TOURISM_INSTRUCTIONS), \
-             patch('main.fetch_tourism_catalogue', return_value=self.catalogue), \
-             patch('main.search_knowledge', return_value={'results': []}) as knowledge:
-            catalogue = {}
-            answer = main.answer_query('U kojoj ruti je Planina Crvanj?', catalogue_out=catalogue)
-        self.assertEqual(answer, 'Verified answer')
-        self.assertEqual(catalogue['places'], self.catalogue['places'])
-        knowledge.assert_called_once_with('U kojoj ruti je Planina Crvanj?')
-        first_args = client.responses.create.call_args_list[0].kwargs
-        self.assertIn(main.TOURISM_TOOL, first_args['tools'])
-        outputs = [item for item in client.responses.create.call_args_list[1].kwargs['input'] if isinstance(item, dict) and item.get('type') == 'function_call_output']
-        self.assertEqual(len(outputs), 2)
-        self.assertEqual(json.loads(outputs[0]['output'])['places'], self.catalogue['places'])
-        self.assertEqual(client.responses.create.call_args_list[1].kwargs['tool_choice'], 'none')
+        self.assertEqual(synthesis["tool_choice"], "none")
+        outputs = {
+            item["call_id"]: item["output"] for item in synthesis["input"]
+            if isinstance(item, dict) and item.get("type") == "function_call_output"
+        }
+        self.assertEqual(outputs, {
+            run["call_id"]: run["output"] for run in writer.call_args.kwargs["tool_runs"]
+        })
+        return result, {call_id: json.loads(output) for call_id, output in outputs.items()}
 
-    def test_streaming_answer_uses_the_same_csv_tool(self):
-        client = MagicMock()
-        client.responses.create.return_value = SimpleNamespace(output=[SimpleNamespace(
-            type='function_call', name='get_tourism_catalogue', call_id='csv', arguments='{}')], output_text='')
-        stream = client.responses.stream.return_value.__enter__.return_value
-        stream.__iter__.return_value = iter([SimpleNamespace(type='response.output_text.delta', delta='Između planina i neba')])
-        stream.get_final_response.return_value = SimpleNamespace(output_text='Između planina i neba')
-        with patch.dict(os.environ, {'OPENAI_API_KEY': 'test-key'}), \
-             patch('main.OpenAI', return_value=client), \
-             patch('main.get_assistant_instructions', return_value=main.TOURISM_INSTRUCTIONS), \
-             patch('main.fetch_tourism_catalogue', return_value=self.catalogue) as source:
-            result = list(main.answer_query_stream('A kojoj ruti pripada?', history=[{'role': 'user', 'content': 'Planina Crvanj'}]))
-        self.assertEqual(result, ['Između planina i neba'])
-        source.assert_called_once()
-        sent = client.responses.stream.call_args.kwargs['input']
-        self.assertEqual(sent[0]['content'], 'Planina Crvanj')
-        self.assertEqual(len(json.loads(sent[-1]['output'])['places']), 281)
+    def test_catalogue_covers_workbook_pois_routes_business_memberships_and_organizations(self):
+        result = main.get_tourism_catalogue("Crkva Svete Trojice na Gorici")
+        self.assertEqual(result["source"], "workbook")
+        self.assertEqual(len(result["places"]), 281)
+        self.assertEqual(len(result["routes"]), 5)
+        self.assertEqual(len(result["organizations"]), 18)
+
+        places = {p["name"]: p for p in result["places"]}
+        gorica = places["Crkva Svete Trojice na Gorici"]
+        self.assertEqual(gorica["municipality"], "Berkovići")
+        self.assertIn("Kultura", gorica["categories"])
+        self.assertNotIn("description", gorica)
+        self.assertNotIn("coordinates", gorica)
+        self.assertNotIn("Pećina Provalija", places)
+
+        routes = {r["id"]: r for r in result["routes"]}
+        self.assertIn(gorica["id"], routes["route_1699"]["poi_ids"])
+        business = next(b for b in result["route_businesses"] if b["name"] == "Restoran Drenovik")
+        self.assertEqual(business["municipality"], "Nevesinje")
+        self.assertIn(business["id"], routes["route_1590"]["business_ids"])
+        self.assertTrue(set(routes["route_1590"]["poi_ids"]).isdisjoint(routes["route_1590"]["business_ids"]))
+
+        organization = next(o for o in result["organizations"] if "Alat" in o["name"])
+        self.assertIn("radionice", organization["visitor_options"])
+        self.assertTrue({"email", "phone", "contact_person", "internal_note"}.isdisjoint(organization))
+        details = {p["id"]: p for p in result["place_details"]}
+        self.assertLessEqual(len(details), 8)
+        self.assertIn("Hatelji", details[gorica["id"]]["description"])
+
+    def test_catalogue_load_failure_is_reported_without_retrying_live_csv(self):
+        with patch("tourism_workbook.load_workbook_catalogue", side_effect=FileNotFoundError), \
+             patch("main.fetch_tourism_catalogue") as live_csv:
+            result = main.get_tourism_catalogue("Tvrđava Strač")
+        live_csv.assert_not_called()
+        self.assertTrue(result["error"])
+        self.assertEqual(result["places"], [])
+        self.assertEqual(result["routes"], [])
+
+    def test_both_chat_routes_use_workbook_focus_preserve_cards_and_coexist_with_knowledge_search(self):
+        query = "A kojoj ruti pripada?"
+        answer = "Tvrđava Strač pripada ruti Priče uklesane u kamenu."
+        calls = [
+            SimpleNamespace(type="function_call", name="get_tourism_catalogue", call_id="catalogue",
+                            arguments=json.dumps({"focus": "Тврђава Страч"})),
+            SimpleNamespace(type="function_call", name="search_knowledge", call_id="knowledge", arguments="{}"),
+        ]
+        for path in ("/api/chat", "/api/chat/stream"):
+            with self.subTest(path=path), patch("main.search_knowledge", return_value={"results": []}) as knowledge:
+                result, outputs = self.call_chat(path, query, calls, answer)
+
+                knowledge.assert_called_once_with(query)
+                catalogue = outputs["catalogue"]
+                self.assertEqual(catalogue["source"], "workbook")
+                self.assertIn("Tvrđava Strač", {p["name"] for p in catalogue["place_details"]})
+                self.assertEqual([c["id"] for c in result["recommendations"]], ["poi_30", "route_1699"])
+
+    def test_workbook_business_fallback_is_available_on_agrotour_failure_or_empty_results(self):
+        query = "Reci mi nešto o restoranu Restoran Drenovik u Nevesinju."
+        answer = "U katalogu je Restoran Drenovik u Nevesinju."
+        calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour",
+                                 arguments='{"prompt":"model rewrite"}')]
+        for path, upstream in (
+            ("/api/chat", {"data": [], "meta": {"returned": 0}}),
+            ("/api/chat/stream", {"error": "AgroTour API is temporarily unavailable.", "data": []}),
+        ):
+            with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream) as search:
+                _, outputs = self.call_chat(path, query, calls, answer)
+
+                search.assert_called_once_with(query)
+                result = outputs["agrotour"]
+                fallback = result.pop("workbook_fallback")
+                self.assertEqual(result, upstream)
+                self.assertEqual(fallback["source"], "workbook")
+                business = next(b for b in fallback["businesses"] if b["name"] == "Restoran Drenovik")
+                self.assertEqual(business["municipality"], "Nevesinje")
+                self.assertEqual(business["type"], "Restoran")
+                self.assertNotIn("description", business)
+                details = {b["id"]: b for b in fallback["business_details"]}
+                self.assertLessEqual(len(details), 8)
+                self.assertTrue(details[business["id"]]["description"])
+
+    def test_successful_agrotour_payload_reaches_the_model_without_loading_fallback(self):
+        query = "Gdje ručati u Nevesinju?"
+        answer = "AgroTour je pronašao restoran u Nevesinju."
+        calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
+        upstream = {"data": [{"id": "3", "resource": "organisations", "record": {"business_name": "Drenovik"}}]}
+        with patch("main.search_agrotour", return_value=upstream), \
+             patch("main.workbook_business_fallback") as fallback:
+            _, outputs = self.call_chat("/api/chat", query, calls, answer)
+        fallback.assert_not_called()
+        self.assertEqual(outputs["agrotour"], upstream)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

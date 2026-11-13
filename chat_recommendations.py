@@ -1,9 +1,9 @@
-"""Select basic cards from the CSV catalogue actually used for this answer."""
+"""Select basic cards from the catalogue actually used for this answer."""
 import re
 import unicodedata
 
 
-def _words(text: str) -> str:
+def normalized_words(text: str) -> str:
     # Voice input and answers may use Serbian Cyrillic as well as Latin.
     text = text.casefold().translate(str.maketrans(dict(zip(
         'абвгдђежзијклљмнњопрстћуфхцчџш',
@@ -18,11 +18,11 @@ def csv_recommendations(answer: str, catalogue: dict) -> list[dict] | None:
         return None
     if catalogue.get('error'):
         return []
-    text = _words(answer)
+    text = normalized_words(answer)
     cards = []
     for category, records in [('poi', catalogue.get('places', [])), ('thematic_routes', catalogue.get('routes', []))]:
         for record in records:
-            if _words(record['name']) in text:
+            if normalized_words(record['name']) in text:
                 card = {'id': record['id'], 'name': record['name'], 'category': category}
                 if category == 'poi':
                     card['municipality'] = record['municipality']

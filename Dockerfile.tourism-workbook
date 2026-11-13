@@ -1,0 +1,9 @@
+# Preserve the production dependencies and runtime configuration in the serving image.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY main.py chat_recommendations.py tourism_workbook.py /app/
+COPY data/tourism_workbook.json /app/data/tourism_workbook.json
+COPY tests/test_agrotour_pagination.py tests/test_tourism_chat.py /app/tests/
+COPY docs/smart-era-integration.md docs/tourism-workbook.md /app/docs/
+COPY README.md /app/README.md
+RUN python -m unittest tests.test_tourism_chat tests.test_agrotour_pagination -q

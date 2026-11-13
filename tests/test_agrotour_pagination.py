@@ -2,6 +2,7 @@ import io
 import json
 import os
 import unittest
+from http.client import IncompleteRead
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
 from unittest.mock import MagicMock, patch
@@ -87,6 +88,8 @@ class AgroTourPaginationTests(unittest.TestCase):
             HTTPError("https://example.test", 401, "Unauthorized", {}, None),
             HTTPError("https://example.test", 503, "Unavailable", {}, None),
             URLError("DNS failure"),
+            ConnectionResetError("Connection closed"),
+            IncompleteRead(b"truncated response"),
         ):
             with self.subTest(error=type(error).__name__), patch("main.urlopen", side_effect=error) as source:
                 result = main.search_agrotour("Lunch")
