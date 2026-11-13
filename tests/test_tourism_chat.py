@@ -15,6 +15,23 @@ class TourismChatTests(unittest.TestCase):
         main._sessions.clear()
         self.client = TestClient(main.app, base_url="https://localhost")
 
+    def test_workbook_map_links_use_verified_coordinates(self):
+        cases = (
+            ("Platani", "42.711094%2C18.345644"),
+            ("Restoran Varduša", "42.9709109%2C18.0568413"),
+            ("Tvrđava Strač", None),
+        )
+        for name, coordinates in cases:
+            with self.subTest(name=name):
+                links = main.get_tourism_catalogue("Pošalji mi lokaciju.", name)["map_links"]
+                if coordinates:
+                    self.assertEqual(len(links), 1)
+                    self.assertEqual(links[0]["name"], name)
+                    self.assertEqual(links[0]["google_maps_url"],
+                                     f"https://www.google.com/maps/search/?api=1&query={coordinates}")
+                else:
+                    self.assertEqual(links, [])
+
     def call_chat(self, path, query, calls, answer, has_match=None, unmatched_ids=()):
         provider = MagicMock()
         provider.responses.create.side_effect = [

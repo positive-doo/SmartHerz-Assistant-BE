@@ -83,8 +83,7 @@ def put(records, id_, record, where):
     records[id_] = {"id": id_, **record}
 
 
-def coordinates(row):
-    lat, lon = row[6:8]
+def coordinates(lat, lon):
     # A deliberately broad bound for Eastern Herzegovina catches swapped or misentered points.
     if type(lat) in (int, float) and type(lon) in (int, float) and 42 <= lat <= 44 and 17 <= lon <= 20:
         return lat, lon
@@ -120,7 +119,7 @@ def project(book):
     businesses = {}
     business_names = {}
     for line, row in rows(book, "lokalni-biznisi", BUSINESS_COLUMNS):
-        raw_id, name, description, municipality, _, _, _, _, kind, routes = row
+        raw_id, name, description, municipality, lat, lon, _, _, kind, routes = row
         if not text(name):
             if any(text(value) for value in row[2:]):
                 warn("lokalni-biznisi", line, "ignored row without a business name")
@@ -146,8 +145,10 @@ def project(book):
                 raise ValueError(f"Unknown business route at lokalni-biznisi:{line}.")
             route_ids.append(ROUTES[slug.strip()][0])
         business_id = f"business_{number(raw_id)}" if number(raw_id) else None
-        record = {"name": text(name), "municipality": text(municipality), "type": text(kind),
-                  "description": public_text(description), "route_ids": list(dict.fromkeys(route_ids))}
+        record = {"name": text(name), "municipality": text(municipality), "type": text(kind)}
+        if coordinates(lat, lon):
+            record["coordinates"] = {"lat": lat, "lon": lon}
+        record.update(description=public_text(description), route_ids=list(dict.fromkeys(route_ids)))
         put(businesses, business_id, record, f"lokalni-biznisi:{line}")
         business_key = (key(name), key(municipality))
         if business_key in business_names:
@@ -188,9 +189,12 @@ def project(book):
                 business_id = business_names.get((key(name), key(municipality)))
                 if business_id is None and route_key in ROUTE_ONLY_BUSINESSES:
                     business_id = ROUTE_ONLY_BUSINESSES[route_key]
-                    put(businesses, business_id, {"name": text(name), "municipality": text(municipality),
-                                                 "type": text(category), "description": public_text(row[4]),
-                                                 "route_ids": [route_id]}, f"{sheet}:{line}")
+                    record = {"name": text(name), "municipality": text(municipality), "type": text(category)}
+                    lat, lon = row[6:8]
+                    if coordinates(lat, lon):
+                        record["coordinates"] = {"lat": lat, "lon": lon}
+                    record.update(description=public_text(row[4]), route_ids=[route_id])
+                    put(businesses, business_id, record, f"{sheet}:{line}")
                     business_names[key(name), key(municipality)] = business_id
                     warn(sheet, line, "included verified route-only business with its own ID")
                 if business_id is None:
@@ -222,7 +226,7 @@ def project(book):
         descriptions = sorted({public_text(row[4]) for row in variants} - {""}, key=lambda value: (-len(value), value))
         if descriptions and all(descriptions[0].casefold().startswith(value.casefold()) for value in descriptions[1:]):
             place["description"] = descriptions[0]
-        points = {coordinates(row) for row in variants if row[6] is not None or row[7] is not None}
+        points = {coordinates(*row[6:8]) for row in variants if row[6] is not None or row[7] is not None}
         if len(points) == 1 and None not in points:
             lat, lon = next(iter(points))
             place["coordinates"] = {"lat": lat, "lon": lon}

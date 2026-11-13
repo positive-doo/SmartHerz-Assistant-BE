@@ -4,6 +4,7 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlencode
 
 from chat_recommendations import normalized_words
 
@@ -45,6 +46,24 @@ def _details(records: list[dict], query: str, *fields: str) -> list[dict]:
     return [record for _, record in ranked[:DETAIL_LIMIT]]
 
 
+def _with_google_maps_url(record: dict) -> dict:
+    coordinates = record.get("coordinates")
+    if not coordinates:
+        return record
+    params = urlencode({"api": 1, "query": f"{coordinates['lat']},{coordinates['lon']}"})
+    return {**record, "google_maps_url": f"https://www.google.com/maps/search/?{params}"}
+
+
+def workbook_map_links(query: str) -> list[dict]:
+    snapshot = load_workbook_catalogue()
+    text = normalized_words(query)
+    return [
+        _compact(_with_google_maps_url(record), "name", "municipality", "google_maps_url")
+        for group in ("places", "businesses") for record in snapshot[group]
+        if record.get("coordinates") and normalized_words(record["name"]) in text
+    ]
+
+
 def _place_with_routes(place: dict, routes: list[dict]) -> dict:
     return {**place, "route_names": [route["name"] for route in routes if place["id"] in route["poi_ids"]]}
 
@@ -62,7 +81,8 @@ def workbook_named_places(query: str) -> list[dict]:
         prefix = re.escape(first[:5]) + r"\w*" if len(first) > 5 else re.escape(first)
         if re.search(r"\b" + prefix + " " + re.escape(rest) + r"\b", text):
             matches.append(place)
-    return [_place_with_routes(place, snapshot["routes"]) for place in matches[:DETAIL_LIMIT]]
+    return [_place_with_routes(_with_google_maps_url(place), snapshot["routes"])
+            for place in matches[:DETAIL_LIMIT]]
 
 
 def workbook_tourism_catalogue(query: str, focus: str | None = None) -> dict:
@@ -80,6 +100,7 @@ def workbook_tourism_catalogue(query: str, focus: str | None = None) -> dict:
         "organizations": snapshot["organizations"],
         "place_details": [_place_with_routes(place, snapshot["routes"])
                           for place in _details(places, f"{focus or ''} {query}", "description", "coordinates")],
+        "map_links": workbook_map_links(f"{focus or ''} {query}"),
     }
 
 

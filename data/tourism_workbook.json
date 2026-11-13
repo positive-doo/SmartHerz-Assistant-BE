@@ -4033,6 +4033,10 @@
       "name": "Porodični pčelinjak Govedarica",
       "municipality": "Nevesinje",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.2596152,
+        "lon": 18.2349926
+      },
       "description": "Radmilo Govedarica bavi se pčelarstvom više od pedeset godina. Tokom dugogodišnjeg rada posvetio se proizvodnji gotovo svih pčelinjih proizvoda – od meda, polena, perge i matične mliječi, do tradicionalne medovače. Za Radmila je pčelarstvo mnogo više od posla – to je lijepo, zanimljivo, korisno i veoma zdravo zanimanje. Smatra da pčelarstvo može biti hobi, dodatni izvor prihoda, ali i profesionalni posao, a on je lično prošao kroz sve ove faze. Svoje proizvode doživljava kao prirodni eliksir života, nastao zahvaljujući radu pčela i bogatstvu prirode. Porodica Govedarica živi i radi u ekološki očuvanom i čistom prirodnom okruženju, daleko od zagađenja i štetnih uticaja. Njihov pčelinjak danas broji oko 120 košnica, a posebna pažnja posvećena je kvalitetu i prirodnom načinu proizvodnje. Radmilo ima sreću da živi u Brataču, jednom od najljepših sela Istočne Hercegovine, gdje se pčelarska tradicija savršeno uklapa u očuvanu prirodu i bogato kulturno nasljeđe. Posjetioci mogu upoznati život i rad ovog domaćinstva, probati domaće pčelinje proizvode, ali i istražiti prirodne i kulturne znamenitosti sela. Poseban doživljaj predstavlja šetnja do Ovčijeg broda, mosta iz osmanskog perioda, kao i posjeta izvoru Brijest, gdje se može popiti čista izvorska voda. Sve to, uz mir, prirodu i čist vazduh Bratača, čini posjetu ovom domaćinstvu jedinstvenim iskustvom Hercegovine.",
       "route_ids": [
         "route_1699",
@@ -4046,6 +4050,10 @@
       "name": "Proizvodnja krompira Samardžić",
       "municipality": "Nevesinje",
       "type": "Proizvodnja krompira",
+      "coordinates": {
+        "lat": 43.264044,
+        "lon": 18.226109
+      },
       "description": "Porodica Samardžić je generacijama nastanjena u selu Bratač i oduvijek se bave zemljoradnjom i stočarstvom. Proizvode nadaleko poznati nevesinjski krompir, koji svoj ukus duguje plodnoj zemlji Bratačkog luga, čistoj vodi rijeke Zalomke i najboljem vazduhu nevesinjske visoravni. Na njihovom domaćinstvu ćete probati pečeni krompir – pole sa domaćim sirom ili kajmakom. U njihovom domaćinstvu možete da iskusite pravljenje mješina u kojima zrije jedinstveni sir iz mijeha, proizvod koji je upisan na preliminarnu listu nematerijalnog kulturnog nasljeđa Republike Srpske, odnosno BiH. Ljubazni domaćini će vas provesti kroz farmu goveda ili polja krompira, a na polasku ćete obavezno poželjeti da kupite što više krompira po koji ćete se uvijek vraćati. Dok boravite kod Samardžića moći ćete samostalno istraživati znamenitosti sela Bratač kao što su Ovčiji brod – most iz osmanskog perioda na rijeci Zalomci, kaptirani izvori Crvenik, Brijest i Kruševik, čatrnja i pojilo za stoku napravljeno od stećaka - Vrba, diviti se ukrasima na preko 200 stećaka u Brataču, posjetiti ostatke mlinice i ručno pravljene brane – jaza na Čečugama, uživati šetajući Bratačkim lugom i uživati u pogledima na planine Velež i Crvanj koji oduzimaju dah.",
       "route_ids": [
         "route_1699",
@@ -4059,6 +4067,10 @@
       "name": "Restoran Drenovik",
       "municipality": "Nevesinje",
       "type": "Restoran",
+      "coordinates": {
+        "lat": 43.2822,
+        "lon": 18.2078
+      },
       "description": "Restoran Drenovik nalazi se u Kifinom Selu, na 8 km od Nevesinja, na magistralnom putu ka Gacku. Vlasnik Slaviša je treća generacija ovog porodičnog biznisa. U ljetnjem periodu ima kapacitet od 100 mjesta, a u zimskom periodu 50 mjesta. Najpoznatiji su po svom specijalitetu jagnjećem pečenju tokom ljetnje sezone, a tradicionalni specijalitet cicvara je moguće probati tokom cijele godine. Tokom zimskog perioda moguće je probati i dimljenu jagnjetinu. Nude isključivo domaći kajmak, sir, pršut, slaninu koje nabavljaju od malih proizvođača na selu.",
       "route_ids": [
         "route_1699",
@@ -4072,6 +4084,10 @@
       "name": "Proizvodnja sira Glogovac",
       "municipality": "Nevesinje",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.2294,
+        "lon": 18.2165
+      },
       "description": "Porodica Borivoja i Ljubice Glogovac živi u selu Trtine kod Nevesinja. Mali su proizvodjači sira iz mješine, tradicionalnog proizvoda, simbola Hercegovine. Jedno su od hercegovačkih gazdinstava koje su OXFAM Italija i Slow Food pomogli kroz projekat Presidio te tako omogućili visoki sanitarni standard proizvodnje sira iz mješine i njegovu međunarodnu promociju. Glogovci se uspješno bave i ruralnim turizmom. Ako svratite kod Glogovaca, pored prezentacije o proizvodnji sira iz mješine i njegove degustacije, te degustacije čuvene Ljubičine cicvare, nemojte propustiti da se prošetate sa njihovim sinom Miroslavom i posjetite Ovčiji brod, prelijepi stari most iz Otomanskog perioda, na samo 500 metara od kuće Glogovaca.",
       "route_ids": [
         "route_1699",
@@ -4085,6 +4101,10 @@
       "name": "Restoran Pansion Stadion Nevesinje",
       "municipality": "Nevesinje",
       "type": "Smeštaj, Restoran",
+      "coordinates": {
+        "lat": 43.2568,
+        "lon": 18.1176
+      },
       "description": "Objekat Pansion Stadion, koji je smješten u gradu Nevesinje, ima pogled na grad, besplatan WiFi i besplatan privatni parking. Specijalitet kuće je teletina i jagnjetina ispod sača, a zimi se mogu probati i lešo jagnjetina i dimljena jagnjetina. Restoran postoji od 1990. godine i veoma je posjećen. Kapacitet restorana je između 45 i 60 mjesta, dok smještaj posjeduje šest soba sa devet kreveta. Sve smještajne jedinice sadrže prostor za sjedenje, flat-screen televizor sa satelitskim kanalima i sopstveno kupatilo sa besplatnim toaletnim priborom, bideom, tušem i kadom. Svaka od jedinica ima balkon sa pogledom na planinu.",
       "route_ids": [
         "route_1699",
@@ -4098,6 +4118,10 @@
       "name": "Proizvodnja krompira Marić",
       "municipality": "Nevesinje",
       "type": "Proizvodnja krompira",
+      "coordinates": {
+        "lat": 43.2647229,
+        "lon": 18.2249833
+      },
       "description": "Ako ste ljubitelj domaćih i kvalitetnih poljoprivrednih proizvoda, Proizvodnja krompira Marić pravo je mjesto za vas. Na imanju se proizvode i prodaju domaći krompir i luk, uz mogućnost da ih turisti kupe direktno od proizvođača. Poseban doživljaj predstavlja posjeta samom imanju, gdje možete upoznati domaćine, vidjeti gdje nastaju proizvodi i iz prve ruke osjetiti duh tradicionalnog seoskog domaćinstva. Posjeta se može spojiti i sa obilaskom sela Bratač, jednog od najljepših sela Bosne i Hercegovine. Tako put do domaćih proizvoda postaje prilika za upoznavanje prirode, života na selu i ljepota ovog kraja. Za kupovinu nije potrebna prethodna najava – turisti mogu svratiti direktno na imanje, a za dodatne informacije ili dogovor mogu kontaktirati domaćine telefonom. Svratite, upoznajte Bratač i ponesite sa sobom ukus domaćeg krompira i luka – direktno sa imanja Marić.",
       "route_ids": [
         "route_1699",
@@ -4124,6 +4148,10 @@
       "name": "BiS Eko Food",
       "municipality": "Nevesinje",
       "type": "Prerada voća i povrća",
+      "coordinates": {
+        "lat": 43.209111,
+        "lon": 18.129163
+      },
       "description": "Gazdinstvo Sreća Bulajića mjesto je gdje se domaći proizvodi, priroda i gostoprimstvo spajaju u jedno iskustvo. Na gazdinstvu nastaje raznovrsna paleta proizvoda – domaći sokovi i džemovi, rakija, čajevi, sušeno voće i pečurke, pripremljeni sa željom da se sačuvaju ukusi i mirisi ovog kraja. Posjetioci ovdje mogu i da probaju proizvode. Organizuju se degustacije i direktna kupovina proizvoda, a posebno zanimljiv dio posjete je obilazak suma pronalazenje i berba gljiva kada je sezona. Gazdinstvo Bulajić je mjesto za degustaciju, razgovor, učenje i otkrivanje autentičnih domaćih ukusa.",
       "route_ids": [
         "route_1699",
@@ -4137,6 +4165,10 @@
       "name": "Pčelinjaci Daković",
       "municipality": "Nevesinje",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.2727975116555,
+        "lon": 18.1055415421338
+      },
       "description": "U mirnom ambijentu Nevesinja, Gazdinstvo Daković svojim gostima pruža priliku da upoznaju život na selu, uživaju u prirodi i dožive domaćinsku atmosferu ovog kraja. Domaćinstvo se bavi pčelarstvom, pa gosti mogu upoznati svijet pčela i saznati više o proizvodnji domaćeg meda. Za boravak je na raspolaganju smještaj kapaciteta do osam osoba, dok je posebno uređena kuhinja pogodna za organizovanje druženja i okupljanja do 30 osoba. Posebnost Gazdinstva Daković je i mogućnost da domaćin, u zavisnosti od svojih obaveza i raspoloživog vremena, gostima posveti dio ili cijeli dan. Za zainteresovane turiste postoji mogućnost obilaska i upoznavanja okoline, uz domaćina koji poznaje kraj i može ga predstaviti iz drugačije perspektive. Na gazdinstvu se nalaze i psi obučeni za potragu tartufa, što posjeti pruža dodatnu i nesvakidašnju priču o prirodnim bogatstvima ovog područja. Gazdinstvo je otvoreno za razvoj novih turističkih sadržaja. Sa daljim razvojem turizma u Nevesinju, domaćin planira proširiti ponudu i nabavkom konja, čime bi budućim posjetiocima mogao ponuditi još jedan način za istraživanje prirode i krajolika. Pansion je posebno uređen, kvalitetno izgrađen i osmišljen da gostima pruži ugodan i prijatan boravak. Posjeta Gazdinstvu Daković je prilika da usporite, upoznate domaćina, zavirite u svijet pčelarstva i tartufa i otkrijete prirodu Nevesinja iz ugla lokalnog stanovništva.",
       "route_ids": [
         "route_1699",
@@ -4150,6 +4182,10 @@
       "name": "Restoran Bukovik",
       "municipality": "Nevesinje",
       "type": "Restoran",
+      "coordinates": {
+        "lat": 43.133313902796,
+        "lon": 18.2359844954842
+      },
       "description": "Ovaj porodični restoran njeguje tradiciju dugu više od jednog vijeka – radi još od 1917. godine, a i danas u njemu rade isključivo članovi porodice. Kuhinja je zasnovana na autentičnim hercegovačkim jelima i namirnicama koje nabavljaju od lokalnih domaćih proizvođača. Na meniju se mogu pronaći cicvara, kremenadla, domaća kobasica, ćevapi i jaretina, uz nezaobilazne lokalne proizvode poput kajmaka, mladog domaćeg sira i tradicionalnog sira iz mijeha. Poseban specijalitet kuće je dimljena kuvana mlada jaretina, pripremljena na tradicionalan način. Restoran raspolaže sa oko 50 mjesta u zatvorenom prostoru i pogodan je za organizovane turističke grupe. Dodatnu vrijednost posjeti daje prirodno okruženje – svega 700 metara od restorana nalazi se izvor Bukovik, pa se gastronomski doživljaj može povezati sa kratkom šetnjom i upoznavanjem okolnog krajolika. Ovo je mjesto gdje se porodična tradicija, lokalna hrana i hercegovačko gostoprimstvo čuvaju već generacijama.",
       "route_ids": [
         "route_1699",
@@ -4176,6 +4212,10 @@
       "name": "Restoran Bukvica",
       "municipality": "Nevesinje",
       "type": "Restoran",
+      "coordinates": {
+        "lat": 43.242,
+        "lon": 18.1414
+      },
       "description": "Restoran Bukvica posluje od 1965. godine i važi za jedan od najboljih restorana u Nevesinju. Nalazi se uz magistralni put Nevesinje Berkovići, tri kilometra udaljen od Nevesinja. Odmah po dolasku u restoran osjetićete toplu, domaćinsku dobrodošlicu. U restoranu služe samo domaću hranu koju kupuju od lokalnih proizvođača, a to su najbolji sirevi, kajmak, krompir, brašna... Međutim restoran je najpoznatiji po jagnjetini sa ražnja koju prave od jagnjadi kupljene od lokalnih nevesinjskih proizvođača. Restoran prati i moderne trendove pa kod Božidara možete naći i vegetarijanski ili bezglutenski meni. Bilo da ste na proputovanju, svadbi ili nekoj drugoj prosklavi restoran Bukvica je uvijek dobar izbor.",
       "route_ids": [
         "route_1699",
@@ -4189,6 +4229,10 @@
       "name": "Mljekara \"Perfetto Plus\"",
       "municipality": "Nevesinje",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.2528031044932,
+        "lon": 18.1184422300954
+      },
       "description": "Mljekara Perfetto plus je porodična firma koju su osnovali brat i sestra, Goran i Gordana 1997. godine. Mlijeko kupuju od lokalnih nevesinjskih proizvođača i u malom pogonu prerađuju u dobro poznate Perfetto plus proizvode od kojih su najtraženiji kačkavalj, kajmak, nevesinjska mocarela, sir za pitu, dijetalni sir, torotan, feta sir, punomasni sir iz mijeha itd. Kupci su male i velike trgovine, trgovački lanci u nevesinjskom kraju, ali i šire. U Nevesinju imaju svoju prodavnicu u kojoj možete naći sve njihove proizvode. Ukoliko dosad niste probali njihove proizvode, nemate razloga da čekate. Garantujemo da ćete i Vi postati jedan od redovnih korisnika i kupaca mliječnih delicija porodične mljekare Perfetto plus iz Nevesinja.",
       "route_ids": [
         "route_1699",
@@ -4215,6 +4259,10 @@
       "name": "Restoran Bišina",
       "municipality": "Nevesinje",
       "type": "Restoran, Smeštaj",
+      "coordinates": {
+        "lat": 43.2475,
+        "lon": 18.0834
+      },
       "description": "Od 1984. godine, Restoran Bišina njeguje tradiciju domaće kuhinje, kvalitetne hrane i iskrenog hercegovačkog gostoprimstva. Smješten u prirodnom ambijentu, restoran je mjesto gdje se gosti vraćaju zbog autentičnih domaćih specijaliteta, prijatne atmosfere i ukusa koji podsjećaju na tradicionalnu kuhinju ovog kraja. Posebno mjesto u ponudi zauzima dimljena kuvana kozletina, specijalitet po kojem je Bišina prepoznatljiva i koju vrijedi probati. Ljubitelji tradicionalne kuhinje mogu uživati i u teletini ispod sača, pečenoj jagnjetini, domaćim uštipcima, siru i kajmaku, uz bogat izbor salata koje se pripremaju u restoranu od domaćih i svježih namirnica. Sve ono što stiže na sto pažljivo je birano, a naglasak je na domaćim proizvodima i tradicionalnom načinu pripreme. Upravo zbog toga, Bišina nije samo mjesto za obrok – to je mjesto na kojem se čuva duh domaće kuhinje i njeguje tradicija. Restoran Bišina raspolaže prostorom kapaciteta do 150 osoba, što ga čini pogodnim za organizovanje različitih vrsta događaja i okupljanja. U restoranu se organizuju rođendani, proslave, domjenci, porodična i druga svečana okupljanja, uz mogućnost dogovora oko menija i organizacije događaja. Za one koji žele da svoj boravak produže i uživaju u prirodi i gastronomiji ovog kraja, Bišina nudi i smještaj sa 14 ležajeva. Lokacija restorana pruža mogućnost da gosti, osim u domaćoj kuhinji, uživaju i u brojnim prirodnim i turističkim sadržajima u okolini. U blizini se nalaze ski-staza i pećina Novakuša, što Bišinu čini zanimljivom destinacijom tokom cijele godine. Restoran Bišina radi tokom cijele godine, spreman da ugosti kako putnike i turiste, tako i porodice, prijatelje i sve one koji žele da uživaju u tradicionalnim jelima i domaćinskoj atmosferi.",
       "route_ids": [
         "route_2010",
@@ -4228,6 +4276,10 @@
       "name": "Gazdinstvo Dimitrije Milošević",
       "municipality": "Gacko",
       "type": "Uzgoj Gatačkog govečeta, Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.2053,
+        "lon": 18.4159
+      },
       "description": "Nedaleko od magistralnog puta Nevesinje Gacko, u strančici sela Gradina dočekaće vas Dimitrije, mladi domaćin, sa svojom velikom i složnom porodicom, suprugom i četiri sina. Odmah po dolasku osjetićete toplinu porodičnog doma i domaćinske atmosfere. Prije nego što i sjednete Dimitrije će pred vas iznijeti domaće rakije, svaka bolja od bolje, i teško ćete se odlučiti koju da izaberete. Dimitrijevi preci su bili poznati stočari i pčelari, a on je još i proširio i unaprijedio svoje gazdinstvo. Uzgajaju poznato gatačko goveče i od njega proizvode sir, kajmak i meso, a u svom pčelinjaku proizvodi čitavu paletu pčelinjih proizvoda. U neobaveznom razgovoru saznaćete mnogo o životu i radu poljoprivrednika gatačkog kraja, o tradiciji i običajima. I dok čekate da vam Dimitrijeva porodica spakuje tražene proizvode prošetajte živopisnim padinama sela Gradina i osjetite miris planinskih livada. Dolazak kod Miloševića vraća vjeru u istinske vrijednosti sela Istočne Hercegovine.",
       "route_ids": [
         "route_1590",
@@ -4254,6 +4306,10 @@
       "name": "Gazdinstvo Lučić",
       "municipality": "Gacko",
       "type": "Uzgoj Gatačkog govečeta",
+      "coordinates": {
+        "lat": 43.1473532988317,
+        "lon": 18.5648463351175
+      },
       "description": "Imanje Milenka Lučića u selu Miholjače nudi pogled na Gatačko polje od kojeg zastaje dah. Porodica se generacijama bavi stočarstvom, a domaćin s ponosom pokazuje svoje bikove i fotografije predaka sa sajmova i izložbi. Gosti se časte mezom i pićem, a na gazdinstvu se mogu kupiti meso i mliječni proizvodi, uz fotografisanje sa jednog od najljepših vidikovaca u Gacku.",
       "route_ids": [
         "route_2010",
@@ -4267,6 +4323,10 @@
       "name": "Gazdinstvo Buha",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.2468,
+        "lon": 18.4243
+      },
       "description": "Domaćinstvo u visokim Domrkama, do kojeg se dolazi skretanjem sa magistrale Gacko–Nevesinje kod Fojnice, nagrađuje putnike pejzažima koji se otvaraju uz put. Domaćica Branka gostima postavlja domaće: sir i kajmak iz mješine, mladi sir, uštipke, pitu i mezu. Proizvodi se kupuju uz najavu, često nekoliko mjeseci unaprijed, a u blizini je crkva Svetog Dimitrija iz doba Nemanjića.",
       "route_ids": [
         "route_1590",
@@ -4280,6 +4340,10 @@
       "name": "Gazdinstvo Buha DiM",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.2458,
+        "lon": 18.4224
+      },
       "description": "Marijana Buha sa porodicom živi na Gatačkoj površi, četrnaest kilometara od magistralnog puta Gacko–Nevesinje. Na sofri su isključivo domaći proizvodi: sir, kajmak, pršut, kobasice. Marijana pravi čuveni gatački kajmak na drvenim škipima, a zbog velike potražnje kupovinu treba najaviti i do nekoliko mjeseci unaprijed. U blizini je crkva Svetog Dimitrija u selu Domrke.",
       "route_ids": [
         "route_1590",
@@ -4293,6 +4357,10 @@
       "name": "Domaćinstvo Koprivica",
       "municipality": "Gacko",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.2031,
+        "lon": 18.4196
+      },
       "description": "Božana i Miodrag Кoprivica već dvije godine su pružaoci usluga noćenja sa hranom u selu Gradina kod Gacka. Domaćinstvo Кoprivica je etno kutak koji čuva običaje naših predaka, gdje možete pobjeći od svakodnevnog stresa i užurbanog načina života i osjetiti duh tradicije, prirode i topline. Pored domaćih proizvoda pripremljenih na tradicionalni, hercegovački način, možete čuti priču kako izgleda jedan njihov dan ali i uživati u uređenom domaćinstvu i lijepom pogledu na planinu Ivicu. U autentičnom hercegovačkom ambijentu – oazi mira, prirode i tradicije gost se dočekuje kao drag prijatelj. Saznajte i Vi zašto su brojni turisti oduševljeni prilikom posjete ovom domaćinstvu.",
       "route_ids": [
         "route_1590",
@@ -4306,6 +4374,10 @@
       "name": "Gazdinstvo Milošević Lukovice",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.193,
+        "lon": 18.4408
+      },
       "description": "U gatačkom selu Lukovice zajedno žive i rade tri generacije porodice Sanje Milošević, uz četvoro djece. Na gazdinstvu drže dvadesetak krava gatačke rase i isto toliko ovaca, a u mljekari prave gatački kajmak na drvenim škipima. Gostima serviraju sir, kajmak, cicvaru, uštipke i pite, a kajmak se kupuje uz prethodnu najavu. U blizini su crkva Svetog Prokopija i planina Bjelasica.",
       "route_ids": [
         "route_1590",
@@ -4319,6 +4391,10 @@
       "name": "Gazdinstvo Milovan Marković",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.213017,
+        "lon": 18.468004
+      },
       "description": "U živopisnom gatačkom selu Ruda Glavica, gdje se život još uvijek odvija u skladu sa prirodom i tradicijom, nalazi se domaćinstvo Milanke Marković – porodica koja generacijama živi od stočarstva i s ponosom čuva običaje i vrijednosti domaćinskog života. Na njihovom imanju danas se brine o desetak krava, dvadesetak ovaca, kao i tovnoj piladi. Vrijedne ruke porodice svakodnevno stvaraju ono što je nekada bilo neizostavni dio svakog seoskog domaćinstva – kvalitetnu, domaću hranu proizvedenu sa mnogo truda, znanja i ljubavi. Na kućnom pragu Milanke Marković možete pronaći domaće proizvode karakteristične za ovaj kraj: svježe mlijeko i mliječne prerađevine, mladi sir i sir iz miješine, mirisni domaći kajmak, kao i domaća jaja. Za ljubitelje tradicionalne hrane tu su i jagnjad i telad iz sopstvenog uzgoja. Ponuda se ne završava na stočarskim proizvodima. U domaćinstvu se pripremaju i domaći sokovi i džemovi, napravljeni od pažljivo odabranih plodova, baš onako kako se to generacijama radilo u hercegovačkim domaćinstvima. Posebna vrijednost ovog domaćinstva je upravo u tome što se većina proizvoda prodaje na kućnom pragu. Bez posrednika i velikih marketa – direktno od proizvođača do onoga ko cijeni domaći proizvod i zna da prepozna njegov pravi ukus. Posjeta domaćinstvu Milanke Marković nije samo prilika da kupite kvalitetne domaće proizvode. To je susret sa načinom života koji se i danas čuva u gatačkim selima – sa domaćinima koji znaju vrijednost svog rada, poštuju zemlju i stoku od koje žive i s ponosom nastavljaju tradiciju svojih predaka.",
       "route_ids": [
         "route_1590",
@@ -4332,6 +4408,10 @@
       "name": "Gazdinstvo Marković Ruda Glavica",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.2131530824213,
+        "lon": 18.4676192390901
+      },
       "description": "Snežana Marković odlučila je da budućnost gradi na selu, kroz poljoprivredu i proizvodnju domaće hrane. Porodično gazdinstvo u selu Ruda Glavica vodi sa suprugom, četvoro djece i svekrvom. Drže 12 krava i 15 ovaca, a od vlastitog mlijeka prave različite vrste sireva i kajmak. U poslu učestvuje cijela porodica, a proizvodi se prodaju na kućnom pragu.",
       "route_ids": [
         "route_1590",
@@ -4345,6 +4425,10 @@
       "name": "Gazdinstvo Drašković",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.175586,
+        "lon": 18.51872
+      },
       "description": "Kada krenete iz Gacka prema Nevesinju i svratite kod Milke Drašković u Gračanicu, prvo će vas dočekati njen širok osmijeh. A onda ćete shvatiti koliko posla i vrijednih ruku stoji iza tog osmijeha. Zajedno sa porodicom Milka brine o gazdinstvu na kojem uzgajaju 5–6 krava i oko stotinu ovaca. Kod Milke možete probati gatački kajmak na različite načine – iz kace, sa škip(a) ili iz mješine. Porodica se bavi i uzgojem jagnjadi i teladi, sušenjem mesa i proizvodnjom domaćih kobasica. Sve što proizvedu uglavnom pronađe put do kupca na njihovom kućnom pragu. A Milka uvijek nađe način da od prirode uzme još nešto. Dok čuva ovce, ubere šipurak, od kojeg pravi prvoklasni domaći pekmez. Kod nje se tako, uz osmijeh i puno rada, spajaju stočarstvo, tradicionalna proizvodnja i sve ono što bogata priroda ovog kraja daje.",
       "route_ids": [
         "route_1590",
@@ -4358,6 +4442,10 @@
       "name": "Gazdinstvo Mastilović",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.1157,
+        "lon": 18.3125
+      },
       "description": "U selu Kravarevo, nadomak Gacka, smješteno je Gazdinstvo Mastilović, domaćinstvo u kojem se stočarstvom generacijama bavi cijela porodica. Velika i složna porodica Mastilović posvećena je uzgoju goveda i ovaca, a svakodnevni život na gazdinstvu organizovan je oko brige o stoci i proizvodnje kvalitetnih domaćih proizvoda. Znanje i iskustvo prenose se s generacije na generaciju, čuvajući tako tradiciju ovog kraja. Na gazdinstvu se proizvodi širok izbor domaćih mliječnih proizvoda, ali posebno mjesto zauzima čuveni gatački kajmak iz mijeha – tradicionalni specijalitet koji svojim autentičnim ukusom predstavlja pravi gastronomski simbol ovog kraja. Posebna pažnja posvećuje se kvalitetu i higijeni. Proizvodnja se odvija uz izuzetno visok nivo higijene, jer Mastilovići vjeruju da dobar domaći proizvod počinje upravo odgovornim odnosom prema životinjama, sirovinama i svakom koraku u procesu proizvodnje. Posjeta Gazdinstvu Mastilović prilika je da upoznate život jedne velike hercegovačke porodice, saznate kako nastaju tradicionalni mliječni proizvodi i, naravno, probate pravi gatački kajmak iz mijeha. Gazdinstvo Mastilović – tamo gdje porodična tradicija, priroda i domaći proizvod stvaraju ukus koji se pamti.",
       "route_ids": [
         "route_1590",
@@ -4371,6 +4459,10 @@
       "name": "Gazdinstvo Sušić",
       "municipality": "Gacko",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.2219780853614,
+        "lon": 18.5729463311492
+      },
       "description": "U bajkovitoj prirodi sela Vrba smještenog u neposrednoj blizini istoimenog jezera i planine Lebršnik, udaljenog 13 kilometara od Gacka, očekuju vas ljubazni domaćini Sušić. Njihova porodica se generacijama bavi stočarstvom i proizvodnjom mliječnih proizvoda od mlijeka lokalne rase Gatačkog govečeta. Kod Sušića ćete probati nezaboravan sir i kajmak iz mijeha poslužen uz tople uštipke ili domaću pitu, degustirati poznato hercegovačko jelo cicvaru sa kajmakom ili učiti od uvijek nasmijane domaćice Milenije kako se prave ove gurmanske delicije. Sušići će vam sa ponosom pokazati svoju farmu i svoje njive, dok se usput divite pogledima na planinu Lebršnik i okolne pejzaže od kojih zastaje dah. Možete i samostalno prošetati berući ljekovite planinske trave od kojih se prave sokovi i čajevi, ubrati šumskog voća koje u izobilju raste u gatačkim planinama ili prošetati do uređenog izletišta Vrba. Boravak kod Sušića možda traje par sati, ali utisci koje ponesete od ove tradicionalne hercegovačke porodice ostaće trajno urezani u vašem sjećanju.",
       "route_ids": [
         "route_1590",
@@ -4397,6 +4489,10 @@
       "name": "Seoski turizam Supić",
       "municipality": "Gacko",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.2373782877518,
+        "lon": 18.6011461778354
+      },
       "description": "U prelijepom Čemernu na 1300 metara nadmorske visine, u svome domu dočekaće vas vrijedna porodica Supić. Svi koji posjete ovo gazdinstvo moći će da uživaju u ljepotama Čemerna i uživaju u miru i svježini ove planine. Gosti im dolaze sa svih strana svijeta. Od Supića možete da posjetite Perućicu, Lebršnik, Zelengoru, jezero Desivoje ili jednostavno prošetate do obližnjih vidikovaca, izvora rijeke Mušnice. Supiće možete posjetiti u proljeće, ljeto i jesen. Smještaj na gazdinstvu je opremljen u tradicionalnom hercegovačkom etno stilu. Supići govore engleski jezik i lako mogu komunicirati sa gostima.",
       "route_ids": [
         "route_1590",
@@ -4411,6 +4507,10 @@
       "name": "Seosko gazdinstvo \"Zavičaj\"",
       "municipality": "Kalinovik",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.4172143533956,
+        "lon": 18.313149766801
+      },
       "description": "U srcu Uloga, kod Kalinovika, na mjestu gdje planine čuvaju svoju tišinu, a Neretva nosi priče o nekim davnim vremenima, smjestilo se Seosko gazdinstvo Zavičaj – mjesto gdje se gost ne dolazi samo nahraniti i prenoćiti, već doživjeti pravi zavičaj. Od 2000. godine, domaćini gazdinstva njeguju tradiciju gostoprimstva i pripremaju domaću hranu po receptima koji se prenose generacijama. Na trpezi Zavičaja možete pronaći ono najbolje što ovaj kraj ima da ponudi: domaće pite, cicvaru, puru, sir, kajmak i uštipke, a posebna poslastica je riba iz Neretve. Ovdje se jede polako, za punom trpezom, uz razgovor i pogled na prirodu koja okružuje Ulog. Hrana nije samo obrok – ona je dio priče o ovom kraju, njegovim ljudima i načinu života. Zavičaj je posebno zanimljiv onima koji žele da pobjegnu od gradske gužve i upoznaju netaknutu prirodu ovog kraja. U okolini se nalaze brojna planinska jezera, među kojima su: Crvanjsko, Kotlaničko, Orlovačko, Jugovo, Kladopoljsko i Štirinsko jezero. Tu su i izvor Neretve, izvor Pridvorice i prostrana visoravan Morine, koja svojim pejzažima ostavlja snažan utisak na svakog putnika. Ljubitelji kulturno-istorijskog nasljeđa mogu obići pravoslavne i katoličke bogomolje, džamiju, kao i manastir Pridvorica, upoznajući tako prostor na kojem se vijekovima susreću različite tradicije i kulture. Kroz Seosko gazdinstvo Zavičaj prolaze biciklisti, motoristi, kajakaši i avanturisti – ljudi koji vole da putuju, istražuju i otkrivaju mjesta koja nisu dio uobičajenih turističkih ruta. Za goste koji žele da ostanu duže, gazdinstvo nudi smještaj za četiri osobe, kao i auto-kamp za one koji svoj odmor vole provesti pod vedrim nebom. Restoran ima kapacitet od 40 osoba, pa je Zavičaj pogodan kako za individualne putnike i porodice, tako i za manje organizovane grupe. Ako želite da osjetite mir planine, okusite domaću hranu, upoznate kraj u kojem Neretva počinje svoj put i provedete vrijeme daleko od svakodnevne žurbe – Seosko gazdinstvo Zavičaj u Ulogu je mjesto koje vrijedi posjetiti. Jer neke destinacije ne pamtimo samo po onome što smo vidjeli. Pamtimo ih po mirisu domaće pite, okusu sira i kajmaka, toplini domaćina, zvuku rijeke i osjećaju da smo makar na trenutak pronašli svoj Zavičaj.",
       "route_ids": [
         "route_1590",
@@ -4425,6 +4525,10 @@
       "name": "Gazdinstvo Govedarica",
       "municipality": "Kalinovik",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.4699,
+        "lon": 18.3569
+      },
       "description": "Vrijedno gazdinstvo Govedarica se generacijama bavi stočarstvom. Trenutno imaju pedeset goveda. Proizvode i prodaju kajmak i više vrsta sira. Pored ogromnog posla na gazdinstvu djeca se školuju u Istočnom Sarajevu i veoma su dobri đaci i studenti. Vrlo rado dočekuju posjetioce i putnike. Njihove proizvode možete kupiti u Kalinovačkoj kući koja se nalazi u centru Kalinovika.",
       "route_ids": [
         "route_1590",
@@ -4439,6 +4543,10 @@
       "name": "Seoski turizam Čarobna kućica",
       "municipality": "Kalinovik",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.4999657999906,
+        "lon": 18.4352108310909
+      },
       "description": "Planinska Čarobna kućica je smještaj predviđen za ljubitelje prirode koji žele odmor od svakodnevnice i buke u uslovima prirodnog okruženja i kućne atmosfere. Gosti imaju mogućnost samostalnog pripremanja hrane ili obezbjeđivanja domaćih proizvoda i jela domaće kuhinje od strane domaćina uz prethodni dogovor i doplatu. Kućica se nalazi na 1 km udaljenosti od Kalinovika prema Ulogu sa pogledom na vrhove Zelengore, Lelije, Treskavice, uz mogućnost organizovanja prevoza do Zelengore ili Uloga gdje ljubitelji ribolova mogu uživati u ribolovu, a ljubitelji prirode u ljepotama planina i njihovim jezerima. U sklopu imanja je mali povrtnjak za potrebe gostiju tako da gosti u sezoni imaju domaći krompir, luk,salatu, tikvice, mrkvu, peršun. Uz doplatu prema cjenovnicima ribolovnih udruženja, planinara i ovlaštenih prevoznika postoji mogućnost obezbjeđivanja dnevnih dozvola za ribolov na rijeci Neretvi (potočna pastrmka) i na jezerima Zelengore kao i mogućnost organizovanja obilaska Zelengore uz pratnju vodiča te organizovanje izleta do Mostara i Trebinja. Gosti mogu u sopstvenoj režiji da planinare ili voze bicikle markiranim stazama. S obzirom da je kuhinja kompletno opremljena (šporet, frižider, posuđe) gosti mogu sami pripremati hranu, a po potrebi moguća je dostava domaćih proizvoda (meso, sir, kajmak, med, džemovi…) ili organizovanje pripremanja jela iz tradicionalne kuhinje. Takođe, moguće je organizovati radionicu tkanja ili pletenja i upoznavanja sa folklorom ovog područja.",
       "route_ids": [
         "route_1590",
@@ -4453,6 +4561,10 @@
       "name": "Pčelastvo Mandić",
       "municipality": "Kalinovik",
       "type": "Pčelarstvo / med, Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.4965,
+        "lon": 18.4325
+      },
       "description": "Na ovom domaćinstvu poljoprivreda nije samo posao – ona je način života, tradicija i dio porodice. Od davnina se bave stočarstvom i vrijedno rade ono što su naučili od svojih predaka. Danas na njihovom imanju možete pronaći krave, ovce, svinje i pčele, a svaki dan donosi novu obavezu i novu brigu o domaćinstvu. Iako je Bogdan danas penzioner, za njega penzija ne znači odmor od života. Njegov dan i dalje počinje uz stoku, imanje i poslove koje voli. Ruke su navikle na rad, a ljubav prema zemlji i domaćinstvu ne poznaje godine. Posebno mjesto u njihovoj ponudi zauzimaju punomasni sir iz mješine i domaći med – proizvodi nastali od kvalitetnih domaćih sirovina i uz mnogo truda i strpljenja. Punomasni sir u mješini nosi ukus tradicije i vremena kada se hrana proizvodila bez žurbe, sa posebnom pažnjom. A med njihovih pčela još je jedan dokaz koliko je ovo domaćinstvo povezano sa prirodom. Ovdje nema velike industrijske proizvodnje. Ima rada, zemlje, stoke, pčela i domaćinske ruke. I upravo u tome je njihova vrijednost. Jer kada probate proizvod sa ovog domaćinstva, ne probate samo sir ili med. Probate dio života jedne porodice koja već generacijama zna da se dobar proizvod stvara radom, strpljenjem i ljubavlju prema onome što se radi. Poljoprivreda im je u krvi. Tradicija im je u rukama. A domaći proizvod – u srcu.",
       "route_ids": [
         "route_1590",
@@ -4467,6 +4579,10 @@
       "name": "Seoski turizam - vikendica Jana",
       "municipality": "Kalinovik",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.5305027065886,
+        "lon": 18.3914260955108
+      },
       "description": "U srcu prirode, na bijeloj liniji Via Dinarice, smješteno je Seosko domaćinstvo Avram u njihovoj lijepoj vikendici Jana – mjesto gdje se tradicija, domaća hrana i iskreno gostoprimstvo spajaju u nezaboravan doživljaj. Domaćinstvo je registrovano 2024. godine, a porodica Avram svoju ponudu gradi na ljubavi prema tradiciji i domaćoj proizvodnji. Zorica svojim rukama izrađuje različite ručne radove, priprema domaće kolače i džemove, a posebno se izdvaja njihov domaći med od maslačka. Njihove proizvode gosti mogu pronaći u Kalinovačkoj kući ili direktno na domaćinstvu. Zbog velikog interesovanja gostiju, ove godine su svoju ponudu proširili sa još dva bungalova. Trenutni kapacitet je do 10 gostiju, uz planove za dodatno proširenje smještaja. Posebna čar ovog domaćinstva je u domaćoj kuhinji. Gostima se pripremaju tradicionalna jela, napravljena od pažljivo odabranih domaćih namirnica. U vlastitoj bašti uzgajaju povrće koje svakodnevno obogaćuje njihovu ponudu, pa gosti imaju priliku da okuse autentične domaće proizvode i osjete pravi duh seoskog domaćinstva. Vikendica Jana posebno je zanimljiva putnicima i ljubiteljima prirode koji prolaze trasom Via Dinarice. Gosti su često strani turisti, a najčešće se zadržavaju jednu noć – dovoljno da predahnu od puta, uživaju u domaćoj hrani i upoznaju gostoprimstvo ovog kraja. Seosko domaćinstvo Avram otvoreno je tokom cijele godine, a gosti su dobrodošli i uz prethodnu najavu i bez najave. Vikendica Jana nije samo mjesto za noćenje – to je prilika da zastanete, udahnete prirodu i osjetite toplinu pravog doma. Dobro došli na domaćinstvo Avram – gdje se domaće pamti, a gost dočekuje kao prijatelj.",
       "route_ids": [
         "route_1590",
@@ -4481,6 +4597,10 @@
       "name": "Gazdinstvo Cerovina",
       "municipality": "Kalinovik",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.5048637272383,
+        "lon": 18.4481947077413
+      },
       "description": "U prelijepom Kalinoviku, između planina, poljana i prostranih pašnjaka, nalazi se Gazdinstvo Cerovina – mjesto gdje se tradicionalni način života i domaći proizvodi čuvaju i danas. Na gazdinstvu se uzgajaju krave, ovce, kokoši i svinje, a svakodnevni život prati ritam prirode i rada na selu. Gosti imaju priliku da zavire u autentičan život jednog seoskog domaćinstva, obiđu stoku, njive i poljane i upoznaju način na koji nastaju domaći proizvodi. Posebno mjesto u ponudi zauzimaju mliječni proizvodi. Gosti mogu probati ili kupiti mladi i stari kajmak, mladi sir, punomasni sir, sir torotan, domaće mlijeko i surutku. Svaki proizvod nosi dio tradicije ovog kraja i priču o domaćinstvu koje se oslanja na vlastitu proizvodnju i prirodno okruženje. Gazdinstvo Cerovina je posebno zanimljivo putnicima koji istražuju ovaj dio Bosne i Hercegovine. Tokom ljeta najviše gostiju čine pješaci koji prolaze trasom Via Dinarice, a na gazdinstvu su dobrodošli i bez prethodne najave. Ko god pokuca na vrata, dočekan je kao gost. Dolazak kod Cerovina može biti i polazna tačka za istraživanje izuzetno bogatog okruženja. U blizini se nalaze austrougarska tvrđava i crkva, dok ljubitelji prirode mogu istraživati planine Zelengoru, Treskavicu i Gvozno, kao i područje rijeke Neretve. Tu su i brojna planinska jezera, ali i dvije nekropole stećaka koje su dio UNESCO zaštićene baštine. Za putnika na Via Dinarici, Gazdinstvo Cerovina može biti upravo ono mjesto koje se ne planira unaprijed, već se otkrije usput – mjesto gdje se zastane zbog domaćeg sira i kajmaka, porazgovara sa domaćinima i nakratko postane dio seoskog života. Gazdinstvo Cerovina – dođite zbog prirode, zastanite zbog domaćih proizvoda, a ponesite sa sobom uspomenu na gostoprimstvo Kalinovika.",
       "route_ids": [
         "route_1590",
@@ -4495,6 +4615,10 @@
       "name": "Destilerija Starović",
       "municipality": "Gacko",
       "type": "Destilerija",
+      "coordinates": {
+        "lat": 43.1183162856625,
+        "lon": 18.5931261531545
+      },
       "description": "Porodica Starović pretvorila je znanje i iskustvo svojih predaka u prepoznatljiv brend koji danas ponosno predstavlja Gacko. U ovom kraju oduvijek se znalo napraviti dobra rakija. Međutim, Starovići su 2012. godine odlučili da tradicionalnom znanju dodaju savremeni pristup, ozbiljniju proizvodnju i posvećen rad. Tako je nastao Srčanik – rakija koja je postala svojevrsni zaštitni znak Gacka. Generacijama se u ovom kraju vjerovalo da je samonikla biljka srčanik vrijedna i ljekovita, a Starovići su tu tradiciju pretočili u jedinstven proizvod. Uz savremenu tehnologiju, ulaganje u kvalitet i marketing, tradicionalni recept dobio je novo ruho i mjesto na tržištu. A Srčanik je tek dio njihove priče. U ponudi porodice Starović možete pronaći i vrhunsku šljivovicu, lozu, kruškovaču, dunjevaču i jabukovaču – rakije koje nastaju pažljivim odabirom sirovina, strpljenjem i ljubavlju prema poslu. Starovići svom radu pristupaju odgovorno, oslanjajući se na savjete stručnjaka iz oblasti medicine i poljoprivrede, ali i na ono najvažnije – iskustvo koje se u porodici prenosilo generacijama. Rezultat takvog pristupa potvrđuju i brojna priznanja koja njihove rakije iz godine u godinu osvajaju. Priča porodice Starović pokazuje kako se znanje predaka, kada se spoje tradicija, savremeni pristup i preduzetnički duh, može pretvoriti u ozbiljan porodični biznis i brend koji predstavlja cijeli jedan kraj.",
       "route_ids": [
         "route_1590",
@@ -4508,6 +4632,10 @@
       "name": "Gazdinstvo Dželetović",
       "municipality": "Bileća",
       "type": "Mliječni proizvodi, Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 42.8622792607743,
+        "lon": 18.3870480956617
+      },
       "description": "Dželetovići već generacijama žive u Čepelici sa pogledom na plavozeleno Bilećko jezero. Imanje, vijekovima građeno, sastoji se od svih neophodnih pomoćnih zgrada za stoku - krave, ovce, svinje i kokoši. Glavni porodični proizvodi su tradicionalni sir iz mješine, mladi kajmak, sir škripavac, suvi sir u kolutu, maslo. Dželetovići sami proizvode tradicionalne ovčije mješine i istinski su majstori toga zanata. Proizvode prodaju na pragu i trebinjskoj pijaci. Na farmi se nalazi i degustaciona sala gdje je moguće probati sve proizvode ove vrijedne porodice. Moguć je obilazak imanja, životinja, štale, kao i radonica pravljenja sira.",
       "route_ids": [
         "route_1590",
@@ -4521,6 +4649,10 @@
       "name": "Organski pčelinjak Kovačević",
       "municipality": "Bileća",
       "type": "Pčelarstvo / med, Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 42.7861,
+        "lon": 18.4163
+      },
       "description": "Priča pčelinjaka počinje prije više od jednog vijeka u selu Skrobotno, iznad Bilećkog jezera, gdje se znanje i ljubav prema pčelama prenose kroz generacije. Danas ga vode žene porodice Kovačević, a sa više od 70 košnica jedan je od rijetkih pčelinjaka u regionu koje vode isključivo žene. Med nosi organski sertifikat, a u okviru pčelarskog turizma gosti mogu degustirati proizvode, obući zaštitnu opremu i sa domaćinima obići pčelinjak.",
       "route_ids": [
         "route_1590",
@@ -4534,6 +4666,10 @@
       "name": "Pčelinjaci Pažin",
       "municipality": "Trebinje",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 42.632312159949,
+        "lon": 18.3925629325327
+      },
       "description": "Nedeljko Pažin se bavi pčelarstvom posljednjih dvadesetak godina. Rođen je i odrastao na Zupcima, platou iznad Trebinja, u zaseoku Potkraj koje se nalazi na samoj tromeđi BiH, Hrvatske i Crne Gore, na 12. kilometru puta Trebinje – Herceg Novi na nadmorskoj visini od oko 640 metara. Kraj je kao stvoren za pčelarstvo. Neđovo pčelarsko gazdinstvo broji oko 300 pčelinjih društava. Pored meda od žalfije, vrijeska i livadskog meda, ima i čitavu paletu ostalih pčelinjih proizvoda. Proizvodi i imuno pripravak, imuno med sa koprivom, imuno med sa matičnom mliječi, med u saću, polen, propolis kapi, matičnu mliječ, medovaču, propolisnu rakiju, suve smokve i orasi u medu. Cijela porodica se bavi ovim divnim poslom, svi žive sa pčelama i za pčele, med i zdravlje. Moguća je posjeta pčelinjaku, degustacija proizvoda, kao i šetnja nezaboravnim seoskim predjelima. za med porodice Pažin se kaže da je u tegli med iz tri države jer se pčelinjak nalazi na tromeži BiH, Crne Gore i Hrvatske.",
       "route_ids": [
         "route_1590",
@@ -4547,6 +4683,10 @@
       "name": "Seoski turizam Kisin",
       "municipality": "Trebinje",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 42.6481,
+        "lon": 18.3749
+      },
       "description": "Gazdinstvo Miroslava Kisina jedno je od pionira seoskog turizma na području Trebinja. Miro Kisin gostima predstavlja svoje domaće proizvode, uz proizvode malih proizvođača iz Zubaca i Trebinja, a kroz priče domaćina otkriva se kako se nekada živjelo u ovom kraju. Degustacija tradicionalnih proizvoda, blizina Parka prirode Orjen i moderno opremljeni bungalovi za duži boravak čine posjetu pravim doživljajem hercegovačkog sela.",
       "route_ids": [
         "route_1590",
@@ -4573,6 +4713,10 @@
       "name": "Gazdinstvo Popovac",
       "municipality": "Trebinje",
       "type": "Ručna radinost, Smeštaj, Prerada voća i povrća",
+      "coordinates": {
+        "lat": 42.8211,
+        "lon": 18.3021
+      },
       "description": "Rijetko gazdinstvo koje proizvodi aroniju, matične sokove i predmete od drveta masline. Proizvodi se mogu probati i kupiti na kućnom pragu, a posjetioci mogu učestvovati u poljskim radovima i u izradi proizvoda od drveta. Domaćini vode goste u obilazak gazdinstva, obližnjih srednjovjekovnih stećaka i seoskih crkava posvećenih Svetim Arhanđelima, a moguće je i prenoćište u ugodnom seoskom ambijentu.",
       "route_ids": [
         "route_1590",
@@ -4586,6 +4730,10 @@
       "name": "Domaćinstvo Šegrt",
       "municipality": "Trebinje",
       "type": "Ručna radinost, Pčelarstvo / med, Prerada voća i povrća, Mliječni proizvodi",
+      "coordinates": {
+        "lat": 42.6967441943065,
+        "lon": 18.5419916844848
+      },
       "description": "Porodica Šegrt iz trebinjskog sela Aranđelovo pravi meleme, sapune, šampone, tinkture, med, džem, sir, vino, rakiju i pršut. Gosti mogu obići farmu, učestvovati u pravljenju sira, brati povrće, otići na planinu ili se okupati u rijeci Sušici. U blizini su stari grad Klobuk iz 1280. godine i oko 15 izvora pitke vode, a porodica se bavi i izradom i restauracijom gusala.",
       "route_ids": [
         "route_1590",
@@ -4599,6 +4747,10 @@
       "name": "Gazdinstvo Šišić",
       "municipality": "Trebinje",
       "type": "Vinarija, Prerada voća i povrća",
+      "coordinates": {
+        "lat": 42.8987,
+        "lon": 18.0129
+      },
       "description": "Gazdinstvo u trebinjskom selu Strujići, uz put koji spaja Trebinje i Mostar, proizvodi sokove, liker, rakije, džemove, vino i tradicionalna jela. Terasa za degustacije zimi se pretvara u toplu konobu. Gosti mogu brati grožđe i obići gazdinstvo uz vodiča, a porodica njeguje i viševjekovnu kamenoklesarsku tradiciju Popovog polja.",
       "route_ids": [
         "route_1590",
@@ -4612,6 +4764,10 @@
       "name": "Pčelarstvo Sladoje",
       "municipality": "Kalinovik",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.5033,
+        "lon": 18.447
+      },
       "description": "Pčelarstvo Sladoje počelo je kao hobi sa jednom košnicom, a danas broji stotinjak košnica, uz podršku UNDP-a i Via Dinarice za proširenje proizvodnje. Pored meda, prave med sa polenom, med sa borovim iglicama i saće u medu. Pčelinjak je na obroncima Zelengore, od doline Neretve na 500 metara do vrhova na 1.500–1.600 metara, a med je na sajmu u Tuzli 2023. godine dobio priznanje Zlatna pčela. Proizvodi se mogu naći i u Kalinovačkoj kući.",
       "route_ids": [
         "route_1590",
@@ -4625,6 +4781,10 @@
       "name": "Planinarsko-turistički dom Jelašca",
       "municipality": "Kalinovik",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.4814994674542,
+        "lon": 18.4782944396861
+      },
       "description": "U netaknutoj prirodi Kalinovačkog sela Jelašca dočekaće vas Seosko domaćinstvo Lalović koje se bavi izdavanjem smještaja za turiste, pješake, bicikliste, motoriste, kampere, i grupe za rekreaciju. Ovim poslom se bave od 2017. godine. Mogu ugostiti 30 gostiju. Smještaj nude sezonski od maja do oktobra. Imaju 3 A frame objekta, koji su opremljeni sa potrebnim inventarom, kao i kaminom na drva, tako da i dolazak gostiju van sezone ne bi bio problem. U smještaju su dozvoljeni i kućni ljubimci. Takođe, nude prevoz do Zelengore za pojedince i grupe, Nacionalnog parka Sutjeska, Sarajeva, Foče, itd. U objektu se služi isključivo domaća hrana od lokalnih proizvođača. Njihov cilj su zadovoljni gosti, puni utisaka.",
       "route_ids": [
         "route_1590",
@@ -4639,6 +4799,10 @@
       "name": "API komora \"Dulićanka\"",
       "municipality": "Gacko",
       "type": "Pčelarstvo / med, Prerada voća i povrća",
+      "coordinates": {
+        "lat": 43.0615389455507,
+        "lon": 18.5982069684937
+      },
       "description": "Porodica Senić iz Novih Dulića jedna je od onih porodica koje čovjeku vrate vjeru da se i u malom mjestu može stvoriti velika i lijepa priča. Ognjen Senić, nakon završenog fakulteta, vratio se u svoj zavičaj, jer je upravo tu vidio svoju sreću, život i budućnost. Sa suprugom je osnovao porodicu i nastavio da gradi život oslonjen na zemlju, prirodu i ono što su mu ostavili njegovi preci. U njihovom domu osjećaju se toplina, sloga, gostoprimstvo i onaj stari hercegovački duh domaćinstva. Voćnjak, pčele, djeca i priroda postali su dio njihove svakodnevice, ali i temelj jedne nove turističke priče. Posebno mjesto u svemu tome ima API komora „Dulićanka“, u kojoj posjetilac ne dobija samo proizvod, već doživljaj – susret sa pčelama, prirodom i životom na selu. Senići su od pčelarstva napravili više od posla: napravili su mjesto susreta čovjeka i prirode. Njihova kreativnost, ljubav prema zavičaju i brojni detalji koje su sami stvorili pokazuju koliko se tradicija može sačuvati, a istovremeno obogatiti novim idejama. Iznad njihovih Dulića stoji Gat, sa svojom istorijom, starom tvrđavom i budućnošću koja se sve više prepoznaje kroz ideju parka prirode. Ova porodica pokazuje da zavičaj nije samo mjesto iz kojeg potičemo, već mjesto kojem svojim životom možemo vratiti ono što nam je dao. Senići su ostali uz svoje korijene i od njih stvorili budućnost. Zato je njihova priča mnogo više od priče o jednom domaćinstvu – to je priča o ljubavi prema porodici, prirodi, radu i svom kraju. Priča koja nam tiho govori da, kada se korijeni čuvaju ljubavlju, oni ne ostaju samo u zemlji – oni rastu prema nebu.",
       "route_ids": [
         "route_1590",
@@ -4652,6 +4816,10 @@
       "name": "Pčelinjaci Aškrabić",
       "municipality": "Gacko",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.20131,
+        "lon": 18.600417
+      },
       "description": "Porodica Aškrabić iz Dramešine jedna je od onih porodica koje svojim načinom života čuvaju duh i pamćenje hercegovačkih sela. Dramešina, smještena na oko 1200 metara nadmorske visine i dvanaest kilometara od Gacka, danas je tiho selo koje oživi od proljeća do kasne jeseni. Za Aškrabiće ona nikad nije bila samo mjesto, ona je korijen, rodna kuća i zavjet. Posebno mjesto u njihovom životu zauzima pčelarstvo, kojim se Blagota i njegova porodica bave već trideset godina. Na čistim planinskim prostorima ima više od 140 pčelinjih društava, okruženih cvijetom, polenom, vodom, suncem i čistim planinskim vazduhom. Kvalitet njihovog meda potvrđe je i brojnim medaljama i nagradama. Oko porodične kuće rađaju jabuke, kruške i šljive, a bašta daje plodove koji na sto stižu iz sopstvenog dvorišta. Kod njih se njeguje ono najvrednije - domaće, prirodno i proizvedeno rukama domaćina. Aškrabići svoju ljubav prema Dramešini prenose i na djecu, koja se rado vraćaju rodnom ognjištu i čuvaju vezu sa zavičajem. A ko dođe u Dramešinu, ne dolazi samo u selo, dolazi kod domaćina, tamo gdje su vrata otvorena, a priroda dio porodičnog života. Dramešina tako postaje priča o pčelama, voću, zemlji, domaćoj hrani i ljudima koji znaju da se korijeni ne zaboravljaju.",
       "route_ids": [
         "route_1590",
@@ -4665,6 +4833,10 @@
       "name": "Sirana \"Kulje EKO\"",
       "municipality": "Berkovići",
       "type": "Mliječni proizvodi",
+      "coordinates": {
+        "lat": 43.13021,
+        "lon": 18.13028
+      },
       "description": "Miljana i Željko Kuljić žive u selu Donja Trusina i bave se proizvodnjom tradicionalnih sireva, na prvom mjestu sira iz mješine i škripavca. Sirana je brendirana pod nazivom „Kulje EKO“. Kuljići su specifični po tome što u proizvodnji koriste iskuljučivo mlijeko autohtonih pasmina goveda, kao što su buša i gatačko govedo, upotrebljavaju organska sirila i nejodiranu so, dok se sama tehnologija proizvodnje bazira na starim receptima. Kod očuvanja tradicionalnih receptura pomaže im Željkova majka Dragica, koju u šali često nazivaju „stručnim savjetnikom“ za proizvodnju nekadašnjih sireva. Mlađi naraštaji Kuljića - Luka, Marija i Žarko, pored školskih obaveza aktivno učestvuju u svim poslovima domaćinstva. Čuvaju krave i ovce, pomažu kod sakupljanja ljetine i sl. Važno je naglasiti da se cjelokupan proizvodni proces odvija u savremeno opremljenoj mini sirani, u kojoj se na optimalan način kombinuju moderna tehničko-tehnološka dostignuća u proizvodnji sira, sa tradicionalnim recepima i lokalno proizvedenim mlijekom. Sirana „Kulje EKO“ – Čuvar tradicionalnih sireva.",
       "route_ids": [
         "route_1590",
@@ -4678,6 +4850,10 @@
       "name": "Pčelarstvo Mladić",
       "municipality": "Kalinovik",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.5089,
+        "lon": 18.4167
+      },
       "description": "Poljoprivredno gazdinstvo Mladić posluje od 2021. godine i bavi se i pčelarstvom. Na desetak košnica u selu Božanovići proizvodi livadski med, koji je glavni proizvod gazdinstva.",
       "route_ids": [
         "route_1590",
@@ -4689,6 +4865,10 @@
       "name": "Gazdinstvo Milutina Miloševića",
       "municipality": "Gacko",
       "type": "Uzgoj Gatačkog govečeta, Objekat seoskog turizma, Smeštaj",
+      "coordinates": {
+        "lat": 43.2083681126162,
+        "lon": 18.4436512865835
+      },
       "description": "U selu Šume, nadomak Gacka, nalazi se porodično domaćinstvo Milošević, mjesto gdje se ljubav prema zemlji, životinjama i porodičnoj tradiciji prenosi s generacije na generaciju. Ovdje svoju budućnost gradi mladi domaćin Milutin Milošević, koji je od svojih roditelja i predaka naučio da domaćinstvo nije samo kuća i imanje, već način života, odgovornost i nasljeđe koje vrijedi sačuvati. Još od djetinjstva Milutin je pokazivao posebnu ljubav prema domaćim životinjama, što ga je kasnije usmjerilo ka veterinarskoj struci. Danas je aktivan član Udruženja uzgajivača gatačkog govečeta i jedan od mladih ljudi koji svojim znanjem i radom žele doprinijeti očuvanju ove dragocjene autohtone rase, nastale ukrštanjem domaćih goveda sa uvezenim rasama prije više od jednog vijeka. Njegovi planovi sežu mnogo dalje od svakodnevnih poslova na imanju. U toku su aktivnosti na nabavci mladih junica iz Austrije, a Milutinova vizija je uspostavljanje centra za uzgoj, razmnožavanje i očuvanje gatačkog govečeta. Na taj način želi dati svoj doprinos očuvanju genetskog nasljeđa, unapređenju stočarstva i stvaranju novih mogućnosti za razvoj poljoprivrede gatačkog kraja. Pored stočarstva, Milutin se aktivno bavi i pčelarstvom, a domaćinstvo se priprema i za razvoj ruralnog turizma. Završni radovi na budućoj „Gostoprimnici“ privode se kraju, pa će posjetioci uskoro imati priliku da iz prve ruke upoznaju život na hercegovačkom selu, domaće proizvode i tradicionalno gostoprimstvo. Posebno mjesto u ponudi domaćinstva zauzima domaći pršut, pripremljen po tradicionalnoj recepturi, koji se među ljubiteljima hercegovačkih delicija izdvaja izuzetnim kvalitetom i prepoznatljivim ukusom. Priča o domaćinstvu Milošević nije samo priča o poljoprivredi, stočarstvu i pčelarstvu. To je priča o mladom čovjeku koji je odlučio da svoje znanje, energiju i budućnost uloži u rodni kraj, čuvajući ono što su stvarale prethodne generacije, ali istovremeno donoseći nove ideje i razvojne mogućnosti. Domaćinstvo Milošević u selu Šume pokazuje da hercegovačko selo ima budućnost kada se tradicija, znanje i ljubav prema zavičaju nađu u pravim rukama.",
       "route_ids": [
         "route_1590",
@@ -4702,6 +4882,10 @@
       "name": "Pčelarsvo Radovanović",
       "municipality": "Nevesinje",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.2635653733217,
+        "lon": 18.1188610179857
+      },
       "description": "Pčelarstvo Radovanović iz Nevesinja decenijama njeguje pčelarski zanat koji se u porodici prenosi kroz generacije. Pčele skupljaju nektar sa hercegovačkih livada i paša na kojima cvjetaju vrijesak, kadulja i lipa. U ponudi su med, matična mliječ, polen, perga i propolis, a za kvalitet su osvajali brojna priznanja na sajmovima. Proizvode je moguće naručiti telefonom ili e-poštom, a mogu se naći i na lokalnim i regionalnim sajmovima.",
       "route_ids": [
         "route_1590",
@@ -4715,6 +4899,10 @@
       "name": "Gazdinstvo Gušić",
       "municipality": "Nevesinje",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.270717,
+        "lon": 18.219288
+      },
       "description": "Gazdinstvo Gušić, smješteno u Donjem Brataču, od davnina se bavilo poljoprivredom. Naročito su poznati po kvalitetnom medu koga pčele skupljaju po netaknutoj prirodi bratačkih livada i krša. Kod njih možete naći i izuzetan bijeli luk (saransak) koji jača imunitet i daje posebnu aromu lokalnim jelima. Osim kupovine u Brataču možete prošetati do nekih od najvećih atrakcija opštine Nevesinje kao što su Ovčiji brod i Rimski put.",
       "route_ids": [
         "route_1590",
@@ -4728,6 +4916,10 @@
       "name": "Pčelarstvo Lojović",
       "municipality": "Gacko",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.1390604319347,
+        "lon": 18.596607553156
+      },
       "description": "Lipnik je jedno od najljepših sela gatačkog kraja, smješteno nadomak Gacka, između Avtovca i drugih starih hercegovačkih sela. Ukrašen bogatom prirodom, rijekom i bogatom istorijom, Lipnik i danas živi kroz svoje ljude, njihove kuće i ljubav prema zavičaju. U svom prelijepom selu svoju priču gradi Pčelarstvo Lojović, mlado porodično pčelarstvo koje sa mnogo ljubavi vode Dragan Lojović i njegova majka. Uz njih su i Draganove sestre koje dolaze i pomažu, jer porodično ognjište za njih nije samo kuća - ono je mjesto kojem se uvijek vraćaju. Dragan je jedan od onih mladih ljudi koji su završili školu, a potom odlučili da se vrate u svoje Gacko i svoj život grade na porodičnom imanju. Svoju budućnost ne vide daleko od rodne kuće, već upravo ovdje, među svojim ljudima, zemljom, prirodom i pčelama. Vjeruju da se budućnost Gacka i Istočne Hercegovine može graditi na selu - od sopstvenog rada, domaćeg proizvoda i povrataka mladih porodičnim ognjištima. Iako je pčelarstvo Lojović mlado, iza njega stoji dragocjeno iskustvo Draganovog ujaka Mitra Miloševića iz Šuma od koga je Dragan učio pčelarstvo i odnos prema pčelama i prirodi. A kako ljepše sačuvati jedno porodično ognjište, nego onda kada oko njega zuje pčele? Pčelarstvo Lojović je zato više od proizvodnje meda. To je priča o mladom čovjekukoji se vratio svom korijenu, o majci i sestrama koje čuvaju porodičnu kuću i o Lipniku koji pokazuje da selo može biti mjesto života, rada i budućnosti.",
       "route_ids": [
         "route_1590",
@@ -4741,6 +4933,10 @@
       "name": "Pčelarstvo Brana Tamindžije",
       "municipality": "Nevesinje",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.1116,
+        "lon": 18.2162
+      },
       "description": "Porodica Tamindžija pčelari od 1880. godine i čuva staru porodičnu tradiciju u selu Bežđeđe kod Nevesinja. Pčelinjak je seleći: od marta do maja pčele pasu na Berkovićima u selu Ljuti Do, na 350 metara nadmorske visine, u maju i junu na livadskoj paši u Žiljevu, a završnu pašu imaju na vrijesku i travi ivi u Bežđeđu, na 1.000 metara. Glavni proizvodi su livadski med, med u saću, vosak i propolis.",
       "route_ids": [
         "route_1590",
@@ -4754,6 +4950,10 @@
       "name": "Luxury chalet Zelengora",
       "municipality": "Kalinovik",
       "type": "Smeštaj",
+      "coordinates": {
+        "lat": 43.3739,
+        "lon": 18.534
+      },
       "description": "Na jednoj od najljepših i najatraktivnijih lokacija Nacionalnog parka Sutjeska, uz samu obalu Jugovog (Borilovačkog) jezera, smješten je Zelengora Luxury Chalet – mjesto gdje se netaknuta priroda susreće sa udobnošću, elegancijom i mirom. Objekat se sastoji od dvije odvojene smještajne jedinice, smještene pod istim krovom, od kojih svaka raspolaže sa 4 smještajna mjesta. Jedna smještajna jedinica orijentisana je prema Jugovom (Borilovačkom) jezeru i pruža očaravajući pogled na njegovu mirnu površinu, dok je druga okrenuta prema vrhu Stog, jednom od najljepših i najprepoznatljivijih vrhova Zelengore. Bez obzira koju smještajnu jedinicu odaberete, uživat ćete u jedinstvenom spoju netaknute prirode, planinskog mira i veličanstvenih pejzaža. Smještajne jedinice su savremeno opremljene i pažljivo uređene kako bi gostima pružile potpun komfor. Svaka sadrži sve što je potrebno za ugodan i bezbrižan boravak – potpuno opremljenu kuhinju, udoban dnevni boravak, kupatilo, terasu i sve sadržaje potrebne za kvalitetan odmor. Ovo je idealna destinacija za ljubitelje prirode, planinarenja, ribolova, vožnje bicikla, fotografije ili jednostavno za one koji žele pobjeći od gradske vreve i uživati u tišini, svježem planinskom zraku i ljepoti jednog od najljepših predjela Bosne i Hercegovine. Bilo da dolazite sa porodicom, prijateljima ili u paru, ovdje ćete pronaći savršen spoj prirodnog ambijenta i moderne udobnosti. Jutra uz pogled na jezero, zalasci sunca iza planinskih vrhova i zvjezdano nebo bez gradske rasvjete učinit će vaš boravak nezaboravnim. Doživite Zelengoru onako kako zaslužuje – u njenom najljepšem izdanju. Dobro došli u Zelengora Luxury Chalet, mjesto kojem ćete se uvijek rado vraćati.",
       "route_ids": [
         "route_1968",
@@ -4765,6 +4965,10 @@
       "name": "Katun Zelengora",
       "municipality": "Kalinovik",
       "type": "Smeštaj",
+      "coordinates": {
+        "lat": 43.3926,
+        "lon": 18.6566
+      },
       "description": "Na 1.550 metara nadmorske visine, u srcu planine Zelengore, smješten je Katun Zelengora – planinska kuća namijenjena svima koji žele odmor u netaknutoj prirodi, daleko od gradske gužve i svakodnevnog stresa. Kuća je sa jedne strane okružena šumom, dok se sa druge pruža predivan pogled na vrhove Zelengore. Zahvaljujući svojoj lokaciji, predstavlja idealnu polaznu tačku za obilazak prirodnih ljepota ovog područja. Jugovo jezero udaljeno je svega 500 metara, a Orlovačko jezero oko 800 metara, do kojih se lako stiže laganom šetnjom. Katun Zelengora pruža sve što je potrebno za udoban i bezbrižan boravak. U prizemlju se nalaze prostrani dnevni boravak sa TV-om, trpezarija i potpuno opremljena kuhinja sa aparatom za kafu. Poseban ugođaj prostoru daje kamin, koji tokom hladnijih dana stvara toplu i prijatnu atmosferu. Gostima su na raspolaganju potpuno opremljeno kupatilo i besplatan Wi-Fi internet. Na spratu, koji je namijenjen za odmor i spavanje, nalaze se dva bračna kreveta i dva odvojena kreveta za jednu osobu, što kuću čini pogodnom za boravak porodica i manjih grupa prijatelja. Sa sprata se izlazi na balkon sa kojeg se pruža pogled na planinske vrhove i okolnu prirodu. Ispred kuće nalazi se prostrana terasa sa drvenom garniturom za sjedenje, idealna za jutarnju kafu, odmor nakon planinarenja ili uživanje u svježem planinskom vazduhu. Pogled sa terase pruža se prema vrhovima Zelengore i prirodnom ambijentu koji ovu planinu čini jedinstvenom. Zelengora je destinacija koja oduševljava u svako doba godine. Ljeti privlači kristalno čistim jezerima, prostranim pašnjacima i brojnim planinarskim stazama, dok zimi osvaja snježnim pejzažima i potpunim mirom. Bez obzira na to kada je posjetite, Zelengora pruža doživljaj kojem ćete se poželjeti ponovo vratiti.",
       "route_ids": [
         "route_1968",
@@ -4776,6 +4980,10 @@
       "name": "Gazdinstvo Višnjevac",
       "municipality": "Kalinovik",
       "type": "Prerada voća i povrća",
+      "coordinates": {
+        "lat": 43.4997,
+        "lon": 18.4346
+      },
       "description": "Gazdinstvo posluje od 2020. godine i pravi domaće organske džemove od planinskog šipurka, šljive čačanke i požegače, drijenka i drugog voća, a po narudžbi i druge voćne džemove. Voće se bere u prirodi na Kalinoviku, a dio se otkupljuje. Količine zavise od roda: šipurka se preradi 200–300 tegli godišnje.",
       "route_ids": [
         "route_1968",
@@ -4788,6 +4996,10 @@
       "name": "Pčelarstvo Bozalo",
       "municipality": "Kalinovik",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.5057,
+        "lon": 18.4461
+      },
       "description": "Petočlana porodica Bozalo iz Kalinovika pčelari 16 godina: od hobija sa nekoliko košnica došli su do pčelarskog karavana od 140 košnica, koje se tokom sezone voze po nezagađenim predjelima Kalinovika. Dio košnica je u selu Ulog, gdje je klima blaža pa je i okus meda drugačiji. Godišnje proizvedu 700–800 kg livadskog meda, a nude ga u pakovanjima od 1 kg, 0,5 kg i 0,25 kg, uz propolis u kapima. Proizvodi se mogu naći i u Kalinovačkoj kući.",
       "route_ids": [
         "route_1968",
@@ -4800,6 +5012,10 @@
       "name": "San tri gorske vile",
       "municipality": "Kalinovik",
       "type": "Smeštaj",
+      "coordinates": {
+        "lat": 43.3769,
+        "lon": 18.5397
+      },
       "description": "Duboko u srcu Zelengore, pod krošnjama koje šapuću stare legende, smjestili smo naš san od brvna – kolibu „San tri gorske vile“. Ovo nije samo kuća za odmor, ovo je porodična priča nazvana po našem najvećem bogatstvu – kćerkama Ružici, Darinki i Mileni. Željeli smo da stvorimo utočište u kojem svaki detalj miriše na smolu i drvo, a svako jutro počinje pjesmom ptica i pogledom na vrhove koji oduzimaju dah. Naša brvnara – koliba je građena sa ljubavlju da bude dom svim porodicama koje traže povratak prirodi kroz selo i ruralne predjele našeg kraja. Dok se miris domaće kafe širi terasom, a djeca istražuju proplanak u potrazi za tragovima šumskih vila, shvatićete da je vrijeme ovdje stalo, baš onako kako treba Nalazimo se na lokaciji koja je idealna polazna tačka za obilazak „gorskih očiju“. Ispod vrha Stoga, tzv. Planinarske raskrsnice na Zelengori, odakle ne znate kuda bi prije pošli. Da li na vrh Bregoča, Orlovca, Todore, ka Leliji ili u obilazak Orlovačkog, Borilovačkog i ostalih jezera, obližnjih katuna...",
       "route_ids": [
         "route_1968"
@@ -4822,6 +5038,10 @@
       "name": "Pčelarstvo Ćeranić",
       "municipality": "Kalinovik",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.5036,
+        "lon": 18.447
+      },
       "description": "Pčelarstvom se bave od 2021. godine i imaju oko 50 košnica u selu Ulog, gdje je klima blaža nego u Kalinoviku, pa je i okus meda drugačiji. Godišnje proizvedu 400–600 kg livadskog meda, a u manjim, ograničenim količinama i med od medljike. Proizvode prodaju i u Kalinovačkoj kući.",
       "route_ids": [
         "route_1968",
@@ -4834,6 +5054,10 @@
       "name": "Udruženje građana \"Zagorje\" Kalinovik",
       "municipality": "Kalinovik",
       "type": "Ručna radinost",
+      "coordinates": {
+        "lat": 43.505,
+        "lon": 18.4465
+      },
       "description": "Udruženje je osnovano 2023. godine i okuplja deset aktivnih članica. Bave se izradom tradicionalnih unikatnih rukotvorina, pletenjem i heklanjem, a radove predstavljaju u Kalinovačkoj kući i na manifestacijama i sajmovima u Kalinoviku i susjednim opštinama. Za potrebe manifestacija organizuju i ketering domaćih proizvoda karakterističnih za kraj, a zainteresovane rado ugoste na svojim radionicama.",
       "route_ids": [
         "route_1968",
@@ -4846,6 +5070,10 @@
       "name": "Udruženje uzgajivača ovaca \"Kalinovačka stelja\"",
       "municipality": "Kalinovik",
       "type": "Mesara / suhomesnato",
+      "coordinates": {
+        "lat": 43.5038,
+        "lon": 18.4474
+      },
       "description": "Udruženje je osnovano 2023. godine i ima 60 članova. Proizvode sušeno ovčije meso od oplemenjene pramenke uzgojene na teritoriji opštine Kalinovik, čije je porijeklo geografski zaštićeno. Cijeli otkošteni trup se suvo soli isključivo kuhinjskom solju, hladno dimi i suši. Na kvalitet kalinovačke stelje utiču nadmorska visina i planinski pašnjaci bogati raznim biljnim vrstama, a ovce se uzgajaju na ispaši organskog porijekla. Proizvod će se uskoro moći naći i u Kalinovačkoj kući.",
       "route_ids": [
         "route_1968",
@@ -4858,6 +5086,10 @@
       "name": "Pčelarstvo Đorem",
       "municipality": "Kalinovik",
       "type": "Pčelarstvo / med",
+      "coordinates": {
+        "lat": 43.5041,
+        "lon": 18.449
+      },
       "description": "Pčelarstvo je nasljedna djelatnost porodice Đorem, kojom se bave od 1995. godine. Imaju 100–120 košnica smještenih kod sela Borija i proizvode livadsko-planinski med. Proizvode prodaju u Kalinovačkoj kući, a zainteresovanim posjetiocima su na raspolaganju za svaki oblik obilaska pčelinjaka.",
       "route_ids": [
         "route_1968",
@@ -4870,6 +5102,10 @@
       "name": "Planinarski dom Volujak",
       "municipality": "Gacko",
       "type": "Smeštaj",
+      "coordinates": {
+        "lat": 43.2146701988764,
+        "lon": 18.6664567719762
+      },
       "description": "Planinarsko društvo „Volujak“ iz Gacka osnovano je sredinom 2004. godine, a registrovano krajem 2005. godine. Okuplja ljubitelje planinarenja, planinskih predjela i speleologije i aktivno učestvuje u lokalnim, regionalnim, međudržavnim i međunarodnim planinarskim akcijama i ekspedicijama. Članovi društva učestvovali su na ekspedicijama na Mon Blan, Olimp, Golemi Korab, Staru planinu i Kajmakčelan, kao i u istraživanju speleoloških objekata na području Gacka, Hercegovine, Crne Gore i Srbije. Društvo je posebno značajno za razvoj planinarske infrastrukture i promociju planinskog turizma na području Gacka. Jedan od njegovih najvažnijih projekata je Planinarski dom „Volujak“ u Papinom dolu, koji predstavlja bazu za planinarske ture i druge aktivnosti u planinskom području između Volujaka, Lebršnika, Kuka i Bioča. Do doma vodi oko osam kilometara makadamskog puta sa prevoja Čemerno, a iz njegovog okruženja polaze planinarske staze prema okolnim planinskim vrhovima i prirodnim atrakcijama. Planinarski dom nalazi se u Papinom dolu, na području između planina Volujak i Lebršnik, u blizini Kuka, Bioča, izvora rijeke Sutjeske i Jagodinog jezera. Dom raspolaže sa 30 ležajeva, raspoređenih u tri sobe, kao i velikom prostorijom sa ognjištem i kuhinjom sa pitkom vodom. Njime upravlja Planinarsko društvo „Volujak“, a smještaj i boravak u domu organizuju se uz prethodnu najavu. Položaj doma čini ga pogodnom polaznom tačkom za istraživanje okolnih planina i planinarskih staza. Iz Papinog dola vode markirane rute prema vrhovima Volujaka, Lebršnika i Bioča, kao i prema Stabanskim jezerima i drugim atraktivnim lokalitetima u širem planinskom području. Poseban značaj domu daje njegova uloga u razvoju aktivnog i planinskog turizma. Kroz projekat Via Dinarica, PD „Volujak“ dobilo je sredstva za unapređenje smještajnih kapaciteta, snabdijevanja električnom energijom i obezbjeđivanja sanitarne tople vode. Danas je Papin Do jedno od važnih polazišta za planinare koji istražuju planinske masive Gacka i šireg područja Hercegovine, dok aktivnosti PD „Volujak“ doprinose promociji planinarenja, speleologije i boravka u prirodi.",
       "route_ids": [
         "route_1968"
@@ -4880,6 +5116,10 @@
       "name": "Restoran Varduša",
       "municipality": "Ljubinje",
       "type": "Restoran",
+      "coordinates": {
+        "lat": 42.9709109,
+        "lon": 18.0568413
+      },
       "description": "Restoran Varduša nalazi se na uzvišenju Varduša, uz magistralni put M-6, oko 3 km od Ljubinja u pravcu Mostara. Restoran je poznat po tradicionalnoj hercegovačkoj kuhinji i jelima pripremljenim od mesa, među kojima se posebno izdvajaju jagnjetina sa ražnja, lešo jagnjetina, teletina ispod peke i kozletina. U ponudi su i domaći sir, pršut i jela sa roštilja. Zahvaljujući položaju uz važnu saobraćajnicu i ponudi tradicionalnih jela, Varduša predstavlja pogodno mjesto za odmor, predah i upoznavanje sa gastronomskim specijalitetima Hercegovine. Restoran ima i vanjski prostor za sjedenje, a prema aktuelnim podacima otvoren je svakog dana od 7:00 do 23:00.",
       "route_ids": [
         "route_1590",
@@ -4893,6 +5133,10 @@
       "name": "Ljekobilje Ljubinje",
       "municipality": "Ljubinje",
       "type": "Ljekovito bilje",
+      "coordinates": {
+        "lat": 42.94793,
+        "lon": 18.100009
+      },
       "description": "Ljekobilje d.o.o. Ljubinje više od 20 godina proizvodi i prerađuje ljekovito, aromatično i začinsko bilje i pčelinje proizvode, oslanjajući se na prirodne resurse Hercegovine i savremena znanja. Specifična klima, više od 300 sunčanih dana godišnje i kraški pejzaž Hercegovine stvaraju povoljne uslove za rast velikog broja samoniklih ljekovitih i aromatičnih biljaka. Pod brendom „Ljekobilje“ proizvode se čajevi, biljni preparati, eterična ulja, kozmetički i drugi proizvodi. Kompanija objedinjuje proizvodnju sadnog materijala, plantažni uzgoj, otkup samoniklog bilja, preradu i pakovanje, uključujući i sertifikovanu organsku proizvodnju. Centralni pogon nalazi se u Ljubinju, gdje se obavljaju proizvodnja, destilacija i ekstrakcija, dok se u Bileći nalazi pogon za preradu i pakovanje čajeva i drugih biljnih proizvoda. Ljekobilje predstavlja primjer kako se prirodno bogatstvo i tradicionalno znanje Hercegovine mogu pretvoriti u savremene, kvalitetne i autentične proizvode.",
       "route_ids": [
         "route_1590",
@@ -4906,6 +5150,10 @@
       "name": "Hercegovačka kuća",
       "municipality": "Trebinje",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 42.711152,
+        "lon": 18.345267
+      },
       "description": "U samom srcu Trebinja, u ulici Jovana Dučića, na čuvenom trebinjskom Korzou, nalazi se Hercegovačka kuća – mjesto koje na jedinstven način predstavlja bogatstvo hercegovačke gastronomije, tradicije i domaće proizvodnje.",
       "route_ids": [
         "route_1590",
@@ -4918,6 +5166,10 @@
       "name": "Restoran Zvijezda",
       "municipality": "Ljubinje",
       "type": "Restoran, Smeštaj",
+      "coordinates": {
+        "lat": 42.9994280576184,
+        "lon": 18.0440112801323
+      },
       "description": "Restoran Zvijezda je tradicionalni restoran u blizini Ljubinja, smješten uz magistralni put M6. Poznat je po domaćoj hercegovačkoj kuhinji i jelima od mesa, posebno kozletini, teletini i jagnjetini. Zahvaljujući položaju i autentičnoj atmosferi, predstavlja pogodno mjesto za gastronomski predah i upoznavanje sa tradicionalnim ukusima Hercegovine.",
       "route_ids": [
         "route_1590",
@@ -4931,6 +5183,10 @@
       "name": "Kalinovačka kuća",
       "municipality": "Kalinovik",
       "type": "Objekat seoskog turizma",
+      "coordinates": {
+        "lat": 43.5038,
+        "lon": 18.4467
+      },
       "description": "\"Kalinovačka kuća\" je osnovana 11. jula 2024. godine kao poslovna jedinica JU Turističke organizacije opštine Kalinovik. Objekat je namjenjen promociji i prodaji domaćih proizvoda, suvenira i unikatnih tradicionalnih rukotvorina. Na osnovu Pravilnika o uslovima i načinu raspodjele sredstava za subvenciju u poljoprivredi, iz budžeta opštine Kalinovik izdvojena su sredstva za sve one građane koji su potpisali kupoprodajni ugovor sa TOOK o prodaji proizvoda, prerađevina i rukotvorina u objektu \"Kalinovačka kuća\". Po ovom osnovu subvencija iznosi 20% vrijednosti od prodatog proizvoda nakon odbijene marže. Takođe, proizvođači su dobili značajnu podršku kroz projekat Green&Healthy koji finansira Italijanska agencija za razvojnu saradnju a u BiH je provodi Međunarodni agronomski institut iz Barija. Podrška je bila u vidu edukacija, a sve u cilju poboljšanja kvaliteta proizvoda, daljeg plasiranja na tržište i prelaska na organsku proizvodnju. Svim proizvođačima koji su izrazili želju, ova organizacija je finansijski omogućila hemijsko-fizičku i mikrobiološku analizu proizvoda.",
       "route_ids": [
         "route_1590",
@@ -4944,6 +5200,10 @@
       "name": "TA Bosnia Outdoor",
       "municipality": "Istočno Sarajevo",
       "type": "Turistička agencija",
+      "coordinates": {
+        "lat": 43.802399,
+        "lon": 18.428845
+      },
       "description": "Bosnia Outdoor je turistička agencija iz Istočnog Sarajeva, fokusirana na planinski i outdoor turizam. Specijalizovana je za vođene ture i avanture na najljepšim planinama Bosne i Hercegovine – Zelengori, Magliću, Treskavici, Romaniji i Jahorini. Naš tim vodiča pruža sigurno i autentično iskustvo kroz planinarenje, edukativne ture i boravak u netaknutoj prirodi. Cilj agencije je da spoji prirodne ljepote, lokalnu tradiciju, gastronoimiju i rekreativne aktivnosti, stvarajući jedinstvene doživljaje za domaće i strane turiste. Bosnia Outdoor se ističe profesionalnošću, saradnjom s lokalnim zajednicama, seoskim domaćinstvima i promocijom prirodnih resursa, uz stalnu posvećenost očuvanju okoliša i održivom turizmu.",
       "route_ids": [
         "route_1968"
@@ -4954,6 +5214,10 @@
       "name": "Camp Volujak",
       "municipality": "Gacko",
       "type": "Smeštaj",
+      "coordinates": {
+        "lat": 43.27291,
+        "lon": 18.63387
+      },
       "description": "Camp Volujak se nalazi u netaknutoj prirodi, smješten neposredno ispod istoimene planine na 1200 m nadmorske visine. Idealno smo mjesto kako za ljubitelje avanture, tako i za sve ljude koji žele mir, odmor i toplo planinsko gostoprimstvo. ​Našim gostima nudimo udoban smještaj u drvenim bungalovima ukupnog kapaciteta do 15 ležajeva. Svaki bungalov ima vlastiti WC, Wi-Fi internet, grijanje i kompletno opremljenu kuhinju. Za potpuni užitak, uz doplatu nudimo i mogućnost pripreme domaćeg doručka, ručka i večere. ​Za ljubitelje prirode i aktivnog odmora organizujemo: ​Planinske i safari ture: Obilazak Zelengore i Lebršnika, vožnju bicikla i 4x4 safari. ​Adrenalin i avanturu: Via Ferratu i Zip Line. ​Vjerski i kulturni turizam: Posjetu i obilazak manastira Pridvorica.",
       "route_ids": [
         "route_1968"
@@ -4964,6 +5228,10 @@
       "name": "Mljekara Pađeni",
       "municipality": "Bileća",
       "type": "Lokalni biznis",
+      "coordinates": {
+        "lat": 42.969181,
+        "lon": 18.402708
+      },
       "description": "",
       "route_ids": [
         "route_1590"
