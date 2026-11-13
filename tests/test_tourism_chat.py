@@ -212,6 +212,21 @@ class TourismChatTests(unittest.TestCase):
         self.assertEqual([b["id"] for b in fallback["businesses"]], ["business_41"])
         self.assertIn("škripavca", fallback["business_details"][0]["description"])
 
+    def test_named_business_keeps_workbook_record_when_relevance_check_misses_it(self):
+        query = "Koje sireve pravi Gazdinstvo Bajčetić u selu Ljubovo kod Trebinja?"
+        calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
+        live = {"data": [{"id": "10", "resource": "organisations",
+                          "record": {"business_name": "Restoran Varduša", "municipality": "Ljubinje"}}]}
+        with patch("main.search_agrotour", return_value=live):
+            _, outputs = self.call_chat(
+                "/api/chat/stream", query, calls, "Bajčetić pravi škripavac.", has_match=True,
+            )
+        fallback = outputs["agrotour"].pop("workbook_fallback")
+        self.assertEqual(outputs["agrotour"], live)
+        self.assertEqual([b["id"] for b in fallback["businesses"]], ["business_41"])
+        self.assertIn("Ljubovo", fallback["business_details"][0]["description"])
+        self.assertIn("škripavca", fallback["business_details"][0]["description"])
+
     def test_named_poi_reaches_model_even_without_a_catalogue_tool_call(self):
         query = "Šta je posebno kod Tvrđave Strač kod Trebinja?"
         provider = MagicMock()

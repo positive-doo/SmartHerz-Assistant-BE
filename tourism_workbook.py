@@ -49,19 +49,24 @@ def _place_with_routes(place: dict, routes: list[dict]) -> dict:
     return {**place, "route_names": [route["name"] for route in routes if place["id"] in route["poi_ids"]]}
 
 
-def workbook_named_places(query: str) -> list[dict]:
-    """Find named POIs, including an inflected first word such as Tvrđave Strač."""
-    snapshot = load_workbook_catalogue()
+def _named_records(records: list[dict], query: str) -> list[dict]:
+    """Match names with an optionally inflected first word."""
     text = normalized_words(query)
     matches = []
-    for place in snapshot["places"]:
-        name = normalized_words(place["name"]).strip()
+    for record in records:
+        name = normalized_words(record["name"]).strip()
         first, _, rest = name.partition(" ")
         if not rest:
             continue  # A single word can also be a common noun or a broad topic.
         prefix = re.escape(first[:5]) + r"\w*" if len(first) > 5 else re.escape(first)
         if re.search(r"\b" + prefix + " " + re.escape(rest) + r"\b", text):
-            matches.append(place)
+            matches.append(record)
+    return matches
+
+
+def workbook_named_places(query: str) -> list[dict]:
+    snapshot = load_workbook_catalogue()
+    matches = _named_records(snapshot["places"], query)
     return [_place_with_routes(place, snapshot["routes"]) for place in matches[:DETAIL_LIMIT]]
 
 
@@ -86,6 +91,10 @@ def workbook_tourism_catalogue(query: str, focus: str | None = None) -> dict:
 def workbook_business_index() -> list[dict]:
     return [_compact(item, "id", "name", "municipality", "type")
             for item in load_workbook_catalogue()["businesses"]]
+
+
+def workbook_named_business_ids(query: str) -> list[str]:
+    return [item["id"] for item in _named_records(load_workbook_catalogue()["businesses"], query)]
 
 
 def workbook_business_fallback(*, business_ids: list[str] | None = None) -> dict:
