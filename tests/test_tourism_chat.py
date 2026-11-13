@@ -15,12 +15,14 @@ class TourismChatTests(unittest.TestCase):
         main._sessions.clear()
         self.client = TestClient(main.app, base_url="https://localhost")
 
-    def call_chat(self, path, query, calls, answer, has_match=None):
+    def call_chat(self, path, query, calls, answer, has_match=None, unmatched_ids=()):
         provider = MagicMock()
         provider.responses.create.side_effect = [
             SimpleNamespace(output=calls, output_text=""),
             *([] if has_match is None else [
-                SimpleNamespace(output_text=json.dumps({"has_match": has_match})),
+                SimpleNamespace(output_text=json.dumps({
+                    "has_match": has_match, "unmatched_workbook_ids": list(unmatched_ids),
+                })),
             ]),
             SimpleNamespace(output_text=answer),
         ]
@@ -162,7 +164,7 @@ class TourismChatTests(unittest.TestCase):
                     "meta": {"returned": 1, "has_more": False}}
         for path in ("/api/chat", "/api/chat/stream"):
             started = Event()
-            original_relevance = main._agrotour_has_match
+            original_relevance = main._agrotour_relevance
 
             def check_link(url):
                 started.set()
@@ -173,7 +175,7 @@ class TourismChatTests(unittest.TestCase):
                 return original_relevance(*args)
 
             with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream), \
-                 patch("main._agrotour_has_match", side_effect=check_relevance), \
+                 patch("main._agrotour_relevance", side_effect=check_relevance), \
                  patch("link_validation._returns_404", side_effect=check_link) as link_check:
                 _, outputs = self.call_chat(path, query, calls, answer, has_match=False)
             result = outputs["agrotour"]
@@ -193,6 +195,38 @@ class TourismChatTests(unittest.TestCase):
             _, outputs = self.call_chat("/api/chat/stream", query, calls, "Restoran Drenovik.", has_match=True)
         fallback.assert_not_called()
         self.assertEqual(outputs["agrotour"], upstream)
+
+    def test_partial_agrotour_match_only_adds_requested_missing_workbook_business(self):
+        query = "Šta služi Varduša u Ljubinju i koje sireve pravi Bajčetić kod Trebinja?"
+        calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
+        live = {"data": [{"id": "10", "resource": "organisations",
+                          "record": {"business_name": "Restoran Varduša", "municipality": "Ljubinje"}}]}
+        with patch("main.search_agrotour", return_value=live):
+            _, outputs = self.call_chat(
+                "/api/chat/stream", query, calls, "Varduša služi jagnjetinu, a Bajčetić pravi škripavac.",
+                has_match=True, unmatched_ids=["business_41", "unknown"],
+            )
+        fallback = outputs["agrotour"].pop("workbook_fallback")
+        self.assertEqual(outputs["agrotour"], live)
+        self.assertEqual([b["id"] for b in fallback["businesses"]], ["business_41"])
+        self.assertIn("škripavca", fallback["business_details"][0]["description"])
+
+    def test_named_poi_reaches_model_even_without_a_catalogue_tool_call(self):
+        query = "Šta je posebno kod Tvrđave Strač kod Trebinja?"
+        provider = MagicMock()
+        provider.responses.create.return_value = SimpleNamespace(output=[], output_text="Austrougarsko utvrđenje.")
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}), \
+             patch("main.OpenAI", return_value=provider), \
+             patch("main.get_assistant_instructions", return_value=main.TOURISM_INSTRUCTIONS):
+            self.assertEqual(main.answer_query(query), "Austrougarsko utvrđenje.")
+        items = provider.responses.create.call_args.kwargs["input"]
+        self.assertEqual(items[-1]["content"], query)
+        self.assertIn("ukopan", items[-2]["content"])
+        self.assertIn("Hercegovina za cijelu porodicu", items[-2]["content"])
+        self.assertIn("Priče uklesane u kamenu", items[-2]["content"])
+        catalogue = main.get_tourism_catalogue("A kojoj ruti pripada?", "Tvrđava Strač")
+        place = next(item for item in catalogue["place_details"] if item["id"] == "poi_30")
+        self.assertEqual(place["route_names"], ["Priče uklesane u kamenu", "Hercegovina za cijelu porodicu"])
 
 
 if __name__ == "__main__":

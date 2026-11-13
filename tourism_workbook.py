@@ -1,6 +1,7 @@
 """Serve the public, reviewed projection of the Smart ERA workbook to chat."""
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -44,6 +45,26 @@ def _details(records: list[dict], query: str, *fields: str) -> list[dict]:
     return [record for _, record in ranked[:DETAIL_LIMIT]]
 
 
+def _place_with_routes(place: dict, routes: list[dict]) -> dict:
+    return {**place, "route_names": [route["name"] for route in routes if place["id"] in route["poi_ids"]]}
+
+
+def workbook_named_places(query: str) -> list[dict]:
+    """Find named POIs, including an inflected first word such as Tvrđave Strač."""
+    snapshot = load_workbook_catalogue()
+    text = normalized_words(query)
+    matches = []
+    for place in snapshot["places"]:
+        name = normalized_words(place["name"]).strip()
+        first, _, rest = name.partition(" ")
+        if not rest:
+            continue  # A single word can also be a common noun or a broad topic.
+        prefix = re.escape(first[:5]) + r"\w*" if len(first) > 5 else re.escape(first)
+        if re.search(r"\b" + prefix + " " + re.escape(rest) + r"\b", text):
+            matches.append(place)
+    return [_place_with_routes(place, snapshot["routes"]) for place in matches[:DETAIL_LIMIT]]
+
+
 def workbook_tourism_catalogue(query: str, focus: str | None = None) -> dict:
     snapshot = load_workbook_catalogue()
     places = snapshot["places"]
@@ -57,14 +78,23 @@ def workbook_tourism_catalogue(query: str, focus: str | None = None) -> dict:
         ],
         "route_businesses": [_compact(item, "id", "name", "municipality") for item in businesses if item["route_ids"]],
         "organizations": snapshot["organizations"],
-        "place_details": _details(places, f"{focus or ''} {query}", "description", "coordinates"),
+        "place_details": [_place_with_routes(place, snapshot["routes"])
+                          for place in _details(places, f"{focus or ''} {query}", "description", "coordinates")],
     }
 
 
-def workbook_business_fallback(query: str) -> dict:
+def workbook_business_index() -> list[dict]:
+    return [_compact(item, "id", "name", "municipality", "type")
+            for item in load_workbook_catalogue()["businesses"]]
+
+
+def workbook_business_fallback(query: str, *, business_ids: list[str] | None = None) -> dict:
     businesses = load_workbook_catalogue()["businesses"]
+    if business_ids is not None:
+        businesses = [item for item in businesses if item["id"] in business_ids]
     return {
         "source": "workbook",
         "businesses": [_compact(item, "id", "name", "municipality", "type") for item in businesses],
-        "business_details": _details(businesses, query, "description"),
+        "business_details": (_details(businesses, query, "description") if business_ids is None
+                             else [item for item in businesses if item.get("description")]),
     }
