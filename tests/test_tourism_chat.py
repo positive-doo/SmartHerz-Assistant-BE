@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -156,14 +157,30 @@ class TourismChatTests(unittest.TestCase):
         answer = "U katalogu je Restoran Drenovik u Nevesinju."
         calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
         upstream = {"data": [{"id": "3", "resource": "organisations", "score": 0.8,
-                              "record": {"business_name": "Smještaj u Trebinju"}}],
+                              "record": {"business_name": "Smještaj u Trebinju",
+                                         "website": "https://example.test/missing"}}],
                     "meta": {"returned": 1, "has_more": False}}
         for path in ("/api/chat", "/api/chat/stream"):
-            with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream):
+            started = Event()
+            original_relevance = main._agrotour_has_match
+
+            def check_link(url):
+                started.set()
+                return True
+
+            def check_relevance(*args):
+                self.assertTrue(started.wait(timeout=5))
+                return original_relevance(*args)
+
+            with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream), \
+                 patch("main._agrotour_has_match", side_effect=check_relevance), \
+                 patch("link_validation._returns_404", side_effect=check_link) as link_check:
                 _, outputs = self.call_chat(path, query, calls, answer, has_match=False)
             result = outputs["agrotour"]
             fallback = result.pop("workbook_fallback")
-            self.assertEqual(result, upstream)
+            link_check.assert_called_once_with("https://example.test/missing")
+            self.assertEqual(result["meta"], upstream["meta"])
+            self.assertEqual(result["data"][0]["record"], {"business_name": "Smještaj u Trebinju"})
             self.assertEqual(fallback["source"], "workbook")
             self.assertIn("Restoran Drenovik", {b["name"] for b in fallback["business_details"]})
 

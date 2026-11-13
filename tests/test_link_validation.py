@@ -1,5 +1,5 @@
 import unittest
-from threading import Barrier
+from threading import Barrier, Event
 from urllib.error import HTTPError, URLError
 from unittest.mock import MagicMock, patch
 
@@ -78,6 +78,27 @@ class LinkValidationTests(unittest.TestCase):
 
         self.assertEqual(result, payload)
         check.assert_not_called()
+
+    def test_started_checks_are_reused_when_new_fallback_links_are_added(self) -> None:
+        started = Event()
+        missing = "https://example.test/missing"
+        working = "https://example.test/working"
+
+        def check(url):
+            if url == missing:
+                started.set()
+                return True
+            return False
+
+        with patch("link_validation._returns_404", side_effect=check) as mocked:
+            pending = link_validation.start_link_checks({"website": missing})
+            self.assertTrue(started.wait(timeout=5))
+            result = link_validation.sanitize_tool_result(
+                {"website": missing, "fallback": [missing, working]}, pending=pending,
+            )
+
+        self.assertEqual(result, {"fallback": [working]})
+        self.assertEqual(mocked.call_count, 2)
 
 
 if __name__ == "__main__":

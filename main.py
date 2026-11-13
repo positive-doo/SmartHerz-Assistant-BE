@@ -57,7 +57,7 @@ from integration_key_links import require_partner_key, router as integration_key
 from integration_tourism import fetch_tourism_catalogue
 
 from hybrid_search import search_knowledge
-from link_validation import sanitize_tool_result
+from link_validation import sanitize_tool_result, start_link_checks
 from tourism_workbook import workbook_business_fallback, workbook_tourism_catalogue
 from weather import LOCAL_TIMEZONE, WEATHER_INSTRUCTIONS, WEATHER_TOOL, get_weather
 
@@ -945,6 +945,7 @@ def _prepare_answer(
     for tool_call in tool_calls:
         # The model chooses the tool, but it cannot rewrite the user's query.
         logger.info("Executing assistant tool name=%s", tool_call.name)
+        pending_links = None
         if tool_call.name == "search_agrotour":
             arguments = {"prompt": query}
             tool_result = search_agrotour(query)
@@ -954,8 +955,10 @@ def _prepare_answer(
                 fallback_reason = "error"
             elif live_rows == []:
                 fallback_reason = "empty"
-            elif live_rows and not _agrotour_has_match(client, conversation, filters, live_rows):
-                fallback_reason = "no_match"
+            elif live_rows:
+                pending_links = start_link_checks(tool_result)
+                if not _agrotour_has_match(client, conversation, filters, live_rows):
+                    fallback_reason = "no_match"
             if fallback_reason:
                 try:
                     tool_result = {**tool_result, "workbook_fallback": workbook_business_fallback(query)}
@@ -989,7 +992,10 @@ def _prepare_answer(
             tool_result = get_weather(**arguments)
         else:
             continue
-        tool_result = sanitize_tool_result(tool_result)
+        if pending_links is None:
+            tool_result = sanitize_tool_result(tool_result)
+        else:
+            tool_result = sanitize_tool_result(tool_result, pending=pending_links)
         output = json.dumps(tool_result, ensure_ascii=False)
         if tool_runs_out is not None:
             tool_runs_out.append({

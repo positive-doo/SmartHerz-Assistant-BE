@@ -39,9 +39,18 @@ def _find_urls(value):
             yield match.group(0).rstrip(TRAILING_PUNCTUATION)
 
 
-def sanitize_tool_result(value):
-    urls = dict.fromkeys(_find_urls(value))
-    missing = {url for url, is_missing in zip(urls, _LINK_CHECKS.map(_returns_404, urls)) if is_missing}
+def start_link_checks(value, pending=None):
+    if pending is None:
+        pending = {}
+    for url in _find_urls(value):
+        if url not in pending:
+            pending[url] = _LINK_CHECKS.submit(_returns_404, url)
+    return pending
+
+
+def sanitize_tool_result(value, *, pending=None):
+    checks = start_link_checks(value, pending)
+    missing = {url for url, check in checks.items() if check.result()}
 
     def sanitize(item):
         if isinstance(item, dict):
