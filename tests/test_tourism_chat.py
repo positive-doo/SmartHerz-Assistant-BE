@@ -14,10 +14,13 @@ class TourismChatTests(unittest.TestCase):
         main._sessions.clear()
         self.client = TestClient(main.app, base_url="https://localhost")
 
-    def call_chat(self, path, query, calls, answer):
+    def call_chat(self, path, query, calls, answer, has_match=None):
         provider = MagicMock()
         provider.responses.create.side_effect = [
             SimpleNamespace(output=calls, output_text=""),
+            *([] if has_match is None else [
+                SimpleNamespace(output_text=json.dumps({"has_match": has_match})),
+            ]),
             SimpleNamespace(output_text=answer),
         ]
         stream = provider.responses.stream.return_value.__enter__.return_value
@@ -47,7 +50,15 @@ class TourismChatTests(unittest.TestCase):
         else:
             result = response.json()
             self.assertEqual(result["response"], answer)
-            synthesis = provider.responses.create.call_args_list[1].kwargs
+            synthesis = provider.responses.create.call_args_list[-1].kwargs
+
+        expected_create_calls = 1 + (has_match is not None) + (not path.endswith("/stream"))
+        self.assertEqual(provider.responses.create.call_count, expected_create_calls)
+        if has_match is not None:
+            relevance = provider.responses.create.call_args_list[1].kwargs
+            self.assertEqual(relevance["text"]["format"]["name"], "agrotour_relevance")
+            self.assertIn({"role": "user", "content": query}, relevance["input"])
+            self.assertTrue(json.loads(relevance["input"][-1]["content"])["agrotour_records"])
 
         self.assertEqual(synthesis["tool_choice"], "none")
         outputs = {
@@ -149,12 +160,22 @@ class TourismChatTests(unittest.TestCase):
                     "meta": {"returned": 1, "has_more": False}}
         for path in ("/api/chat", "/api/chat/stream"):
             with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream):
-                _, outputs = self.call_chat(path, query, calls, answer)
+                _, outputs = self.call_chat(path, query, calls, answer, has_match=False)
             result = outputs["agrotour"]
             fallback = result.pop("workbook_fallback")
             self.assertEqual(result, upstream)
             self.assertEqual(fallback["source"], "workbook")
             self.assertIn("Restoran Drenovik", {b["name"] for b in fallback["business_details"]})
+
+    def test_matching_agrotour_results_are_sent_without_workbook_details(self):
+        query = "Gdje ručati u Nevesinju?"
+        calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
+        upstream = {"data": [{"id": "3", "resource": "organisations",
+                              "record": {"business_name": "Drenovik", "municipality": "Nevesinje"}}]}
+        with patch("main.search_agrotour", return_value=upstream), patch("main.workbook_business_fallback") as fallback:
+            _, outputs = self.call_chat("/api/chat/stream", query, calls, "Restoran Drenovik.", has_match=True)
+        fallback.assert_not_called()
+        self.assertEqual(outputs["agrotour"], upstream)
 
 
 if __name__ == "__main__":
