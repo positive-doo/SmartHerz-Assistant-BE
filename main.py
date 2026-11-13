@@ -201,6 +201,14 @@ unavailable, say that you could not verify its POIs or route membership.
 Do not call this tool for greetings or unrelated conversation.
 Use the exact catalogue names when mentioning POIs or routes so the interface
 can display their matching cards.
+When recommending a thematic route or when the user asks for its page or map,
+link the route name in Markdown using its official page below. Use these pages
+as the only map references in chat. This overrides other map-link guidance.
+- Staza ukusa – Istočna Hercegovina: https://smartherz.info/tematske-rute/staza-ukusa-istocna-hercegovina/
+- Priče uklesane u kamenu: https://smartherz.info/tematske-rute/price-uklesane-u-kamenu/
+- Između planina i neba: https://smartherz.info/tematske-rute/izmedu-planina-i-neba/
+- Hercegovina za cijelu porodicu: https://smartherz.info/tematske-rute/hercegovina-za-cijelu-porodicu/
+- Staza vode i krša: https://smartherz.info/tematske-rute/staza-vode-i-krsa/
 """.strip()
 
 EVENTS_INSTRUCTIONS = """
