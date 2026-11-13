@@ -58,7 +58,7 @@ from integration_tourism import fetch_tourism_catalogue
 
 from hybrid_search import search_knowledge
 from link_validation import sanitize_tool_result, start_link_checks
-from tourism_workbook import workbook_business_fallback, workbook_map_location, workbook_tourism_catalogue
+from tourism_workbook import workbook_business_fallback, workbook_tourism_catalogue
 from weather import LOCAL_TIMEZONE, WEATHER_INSTRUCTIONS, WEATHER_TOOL, get_weather
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -181,16 +181,6 @@ unavailable, say that you could not verify its POIs or route membership.
 Do not call this tool for greetings or unrelated conversation.
 Use the exact catalogue names when mentioning POIs or routes so the interface
 can display their matching cards.
-
-Call show_location_on_map once when the user asks to see one place on a map or
-confirms one chosen or final place. Resolve references from the conversation.
-Pass the full place name or POI ID and municipality if known. Use catalogue
-names in their base form (for example, Trebinje), without shortening them.
-For a map-only question, this tool is sufficient. If the chosen place is
-unclear, ask which place to show. Do not call it for ordinary recommendations,
-comparisons, route or multi-stop requests, or when the user declines a map.
-If the tool succeeds, briefly confirm the location shown. If it reports
-missing coordinates, explain that a map cannot be shown for that place.
 """.strip()
 
 EVENTS_INSTRUCTIONS = """
@@ -298,23 +288,7 @@ EVENTS_TOOL = {
     "strict": True,
 }
 
-MAP_TOOL = {
-    "type": "function",
-    "name": "show_location_on_map",
-    "description": "Show one explicitly chosen or requested POI on a map using verified workbook coordinates.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "location": {"type": "string", "description": "Exact place name in the catalogue, or its POI ID."},
-            "municipality": {"type": ["string", "null"], "description": "Municipality name, if known."},
-        },
-        "required": ["location", "municipality"],
-        "additionalProperties": False,
-    },
-    "strict": True,
-}
-
-ASSISTANT_TOOLS = [AGROTOUR_TOOL, KNOWLEDGE_TOOL, TOURISM_TOOL, EVENTS_TOOL, WEATHER_TOOL, MAP_TOOL]
+ASSISTANT_TOOLS = [AGROTOUR_TOOL, KNOWLEDGE_TOOL, TOURISM_TOOL, EVENTS_TOOL, WEATHER_TOOL]
 
 
 class DateRangeFilter(BaseModel):
@@ -340,19 +314,11 @@ class ChatRecommendation(BaseModel):
     municipality: str | None = None
 
 
-class ChatMapLocation(BaseModel):
-    id: str
-    name: str
-    latitude: float
-    longitude: float
-
-
 class ChatResponse(BaseModel):
     status: str
     query: str
     response: str
     recommendations: list[ChatRecommendation] | None = None
-    map_location: ChatMapLocation | None = None
 
 
 class HealthResponse(BaseModel):
@@ -976,7 +942,6 @@ def _prepare_answer(
 
     conversation = input_items[:]
     input_items.extend(response.output)
-    multiple_map_calls = sum(call.name == MAP_TOOL["name"] for call in tool_calls) > 1
     for tool_call in tool_calls:
         # The model chooses the tool, but it cannot rewrite the user's query.
         logger.info("Executing assistant tool name=%s", tool_call.name)
@@ -1008,16 +973,6 @@ def _prepare_answer(
             focus = json.loads(tool_call.arguments).get("focus")
             arguments = {"focus": focus[:200]} if isinstance(focus, str) and focus.strip() else {}
             tool_result = get_tourism_catalogue(query, **arguments)
-        elif tool_call.name == MAP_TOOL["name"]:
-            arguments = json.loads(tool_call.arguments)
-            if multiple_map_calls:
-                tool_result = {"error": "Choose one place to show on the map."}
-            else:
-                try:
-                    tool_result = workbook_map_location(arguments["location"].strip(), arguments["municipality"])
-                except (OSError, KeyError, ValueError, TypeError, AttributeError) as exc:
-                    logger.warning("Workbook map location unavailable: %s", type(exc).__name__)
-                    tool_result = {"error": "The workbook map coordinates are unavailable."}
         elif tool_call.name == "get_tourism_events":
             arguments = json.loads(tool_call.arguments)
             # Do not hide an explicitly requested historical year behind a
@@ -1049,11 +1004,8 @@ def _prepare_answer(
                 "arguments": arguments,
                 "output": output,
             })
-        if catalogue_out is not None:
-            if tool_call.name == "get_tourism_catalogue":
-                catalogue_out.update(tool_result)
-            elif tool_call.name == MAP_TOOL["name"] and "map_location" in tool_result:
-                catalogue_out["map_location"] = tool_result["map_location"]
+        if tool_call.name == 'get_tourism_catalogue' and catalogue_out is not None:
+            catalogue_out.update(tool_result)
         input_items.append(
             {
                 "type": "function_call_output",
@@ -1793,9 +1745,6 @@ def chat(payload: ChatRequest, request: Request, response: Response) -> dict:
         "query": payload.query,
         "response": assistant_text,
     }
-    map_location = catalogue.pop("map_location", None)
-    if map_location is not None:
-        result["map_location"] = map_location
     cards = csv_recommendations(assistant_text, catalogue)
     if cards is not None:
         result['recommendations'] = cards
@@ -1827,9 +1776,6 @@ def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
                 raise RuntimeError("The model returned an empty streamed response.")
             _store_session_turn(session, payload.query, assistant_text, tool_runs, payload.filters)
             final_event = {"content": assistant_text, "done": True}
-            map_location = catalogue.pop("map_location", None)
-            if map_location is not None:
-                final_event["map_location"] = map_location
             cards = csv_recommendations(assistant_text, catalogue)
             if cards is not None:
                 final_event['recommendations'] = cards
