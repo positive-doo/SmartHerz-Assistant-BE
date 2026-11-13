@@ -49,6 +49,18 @@ class AgroTourPaginationTests(unittest.TestCase):
             self.assertIs(source.call_args_list[0].args[0], source.call_args_list[1].args[0])
             self.assertTrue(all(call.kwargs["timeout"] == 20 for call in source.call_args_list))
 
+    def test_overlapping_page_keeps_new_records_and_advances_by_raw_rows(self):
+        pages = [page(0, 50, True), page(50, 24, True), page(74, 2, False)]
+        pages[1]["data"][0] = pages[0]["data"][-1]
+        pages[1]["data"][2] = pages[1]["data"][1]
+        with patch("main.urlopen", side_effect=[io.BytesIO(json.dumps(p).encode()) for p in pages]) as source:
+            result = main.search_agrotour("All producers")
+        self.assertEqual([row["id"] for row in result["data"]],
+                         [str(i) for i in range(76) if i not in (50, 52)])
+        self.assertEqual(result["meta"]["returned"], 74)
+        self.assertEqual([parse_qs(urlsplit(c.args[0].full_url).query)["offset"] for c in source.call_args_list],
+                         [["0"], ["50"], ["74"]])
+
     def test_later_page_timeout_retries_that_page_without_duplicate_results(self):
         with patch("main.urlopen", side_effect=[
             io.BytesIO(json.dumps(page(0, 50, True)).encode()),

@@ -88,13 +88,12 @@ def workbook_business_index() -> list[dict]:
             for item in load_workbook_catalogue()["businesses"]]
 
 
-def workbook_business_fallback(query: str, *, business_ids: list[str] | None = None) -> dict:
+def workbook_business_fallback(*, business_ids: list[str] | None = None) -> dict:
     businesses = load_workbook_catalogue()["businesses"]
     if business_ids is not None:
         businesses = [item for item in businesses if item["id"] in business_ids]
     return {
         "source": "workbook",
         "businesses": [_compact(item, "id", "name", "municipality", "type") for item in businesses],
-        "business_details": (_details(businesses, query, "description") if business_ids is None
-                             else [item for item in businesses if item.get("description")]),
+        "business_details": [item for item in businesses if item.get("description")],
     }

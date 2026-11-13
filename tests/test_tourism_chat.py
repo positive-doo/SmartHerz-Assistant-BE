@@ -151,8 +151,9 @@ class TourismChatTests(unittest.TestCase):
                 self.assertEqual(business["type"], "Restoran")
                 self.assertNotIn("description", business)
                 details = {b["id"]: b for b in fallback["business_details"]}
-                self.assertLessEqual(len(details), 8)
                 self.assertTrue(details[business["id"]]["description"])
+                self.assertIn("kajmak", details["business_26"]["description"].casefold())
+                self.assertIn("kajmak", details["business_28"]["description"].casefold())
 
     def test_nonempty_agrotour_payload_keeps_live_rows_and_offers_workbook_for_no_match(self):
         query = "Gdje ručati u Nevesinju?"

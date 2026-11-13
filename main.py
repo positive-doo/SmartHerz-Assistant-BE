@@ -133,7 +133,9 @@ matching business. Say when those details cannot be verified.
 Use relevant AgroTour entries for each business they cover. When a question
 names several businesses, answer each separately. Check workbook_fallback for
 businesses without a live match. If AgroTour is unavailable, use the relevant
-workbook listings. This rule takes precedence over earlier instructions to
+workbook listings and explain that the list covers the catalogue. For a list of
+all matches, use every entry whose fields or description support the request,
+including synonymous or inflected wording. This rule takes precedence over earlier instructions to
 retry or use only AgroTour. Label workbook facts as catalogue information
 without live confirmation.
 The workbook does not confirm packages, availability, prices, opening hours,
@@ -831,15 +833,19 @@ def search_agrotour(prompt: str) -> dict:
                 raise ValueError("Invalid AgroTour page.")
             if meta.get("offset") != offset or not isinstance(meta.get("has_more"), bool):
                 raise ValueError("Invalid AgroTour pagination.")
-            identities = {(row["resource"], row["id"]) for row in rows}
-            if identities & seen or (meta["has_more"] and not rows):
-                raise ValueError("AgroTour pagination did not advance.")
-            seen.update(identities)
             if offset == 0:
                 result = page
-            data.extend(rows)
+            previous_count = len(data)
+            for row in rows:
+                identity = (row["resource"], row["id"])
+                if identity not in seen:
+                    seen.add(identity)
+                    data.append(row)
             if not meta["has_more"]:
                 break
+            if len(data) == previous_count:
+                raise ValueError("AgroTour pagination did not advance.")
+            # The offset counts API rows, including overlapping records.
             offset += len(rows)
         result["data"] = data
         result["meta"] = {**result["meta"], "returned": len(data), "has_more": False}
@@ -999,7 +1005,7 @@ def _prepare_answer(
             if fallback_reason:
                 try:
                     tool_result = {**tool_result, "workbook_fallback": workbook_business_fallback(
-                        query, business_ids=unmatched_ids,
+                        business_ids=unmatched_ids,
                     )}
                     logger.info("AgroTour workbook fallback included reason=%s live_rows=%s",
                                 fallback_reason, len(live_rows or []))
