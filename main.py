@@ -82,7 +82,7 @@ for logger_name in ("httpx", "httpcore", "httpx2", "httpcore2", "pinecone"):
 logger = logging.getLogger(__name__)
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 TTS_MODEL = os.getenv("TTS_MODEL", "gpt-4o-mini-tts")
 TTS_VOICE = os.getenv("TTS_VOICE", "marin")
 TRANSCRIPTION_MODEL = os.getenv("TRANSCRIPTION_MODEL", "gpt-transcribe")

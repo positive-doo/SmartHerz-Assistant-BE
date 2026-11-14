@@ -125,7 +125,7 @@ variables can be exported in the shell before starting Uvicorn.
 | `BM25_STATS_PATH` | For hybrid search | Path to the non-committed `smartherz` BM25 statistics JSON. |
 | `BM25_STATS_URL` | Alternative for hybrid search | Private read-only URL for the same JSON; used only when no path is set. |
 | `OPENAI_API_KEY` | For chat | OpenAI API key. |
-| `OPENAI_MODEL` | No | Model used by the assistant. Default: `gpt-5-mini`. |
+| `OPENAI_MODEL` | No | Model used by the assistant. Default: `gpt-5.6-luna`. |
 | `TTS_MODEL` | No | Speech model. Default: `gpt-4o-mini-tts`. |
 | `TTS_VOICE` | No | Speech voice. Default: `cedar`. |
 | `TRANSCRIPTION_MODEL` | No | Transcription model. Default: `gpt-transcribe`. |
