@@ -1,7 +1,6 @@
 import json
 import os
 import unittest
-from threading import Event
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -38,7 +37,7 @@ class TourismChatTests(unittest.TestCase):
             SimpleNamespace(output=calls, output_text=""),
             *([] if has_match is None else [
                 SimpleNamespace(output_text=json.dumps({
-                    "has_match": has_match, "unmatched_workbook_ids": list(unmatched_ids),
+                    "matching_rows": [0] if has_match else [], "unmatched_workbook_ids": list(unmatched_ids),
                 })),
             ]),
             SimpleNamespace(output_text=answer),
@@ -91,9 +90,9 @@ class TourismChatTests(unittest.TestCase):
         return result, {call_id: json.loads(output) for call_id, output in outputs.items()}
 
     def test_catalogue_covers_workbook_pois_routes_business_memberships_and_organizations(self):
-        result = main.get_tourism_catalogue("Crkva Svete Trojice na Gorici")
+        result = main.get_tourism_catalogue("Crkva Svete Trojice na Gorici na ruti Priče uklesane u kamenu")
         self.assertEqual(result["source"], "workbook")
-        self.assertEqual(len(result["places"]), 281)
+        self.assertLess(len(result["places"]), 281)
         self.assertEqual(len(result["routes"]), 5)
         self.assertEqual(len(result["organizations"]), 18)
 
@@ -106,13 +105,18 @@ class TourismChatTests(unittest.TestCase):
         self.assertNotIn("Pećina Provalija", places)
 
         routes = {r["id"]: r for r in result["routes"]}
-        self.assertIn(gorica["id"], routes["route_1699"]["poi_ids"])
-        business = next(b for b in result["route_businesses"] if b["name"] == "Restoran Drenovik")
+        self.assertEqual(routes["route_1699"]["name"], "Priče uklesane u kamenu")
+        self.assertIn(routes["route_1699"]["name"],
+                      next(p["route_names"] for p in result["place_details"] if p["id"] == gorica["id"]))
+        taste = main.get_tourism_catalogue("Staza ukusa")
+        business = next(b for b in taste["route_businesses"] if b["name"] == "Restoran Drenovik")
         self.assertEqual(business["municipality"], "Nevesinje")
-        self.assertIn(business["id"], routes["route_1590"]["business_ids"])
-        self.assertTrue(set(routes["route_1590"]["poi_ids"]).isdisjoint(routes["route_1590"]["business_ids"]))
+        taste_route = next(r for r in taste["routes"] if r["id"] == "route_1590")
+        self.assertIn(business["id"], taste_route["business_ids"])
+        self.assertTrue(set(taste_route["poi_ids"]).isdisjoint(taste_route["business_ids"]))
 
-        organization = next(o for o in result["organizations"] if "Alat" in o["name"])
+        organizations = main.get_tourism_catalogue("KUD Alat")["organizations"]
+        organization = next(o for o in organizations if "Alat" in o["name"])
         self.assertIn("radionice", organization["visitor_options"])
         self.assertTrue({"email", "phone", "contact_person", "internal_note"}.isdisjoint(organization))
         details = {p["id"]: p for p in result["place_details"]}
@@ -169,8 +173,13 @@ class TourismChatTests(unittest.TestCase):
                 self.assertNotIn("description", business)
                 details = {b["id"]: b for b in fallback["business_details"]}
                 self.assertTrue(details[business["id"]]["description"])
-                self.assertIn("kajmak", details["business_26"]["description"].casefold())
-                self.assertIn("kajmak", details["business_28"]["description"].casefold())
+
+    def test_fallback_excerpts_preserve_product_evidence_for_an_exhaustive_question(self):
+        fallback = main.workbook_business_fallback(query="Izlistaj sve proizvođače gatačkog kajmaka.")
+        details = {b["id"]: b["description"].casefold() for b in fallback["business_details"]}
+        self.assertIn("kajmak", details["business_26"])
+        self.assertIn("kajmak", details["business_28"])
+        self.assertLess(max(map(len, details.values())), 521)
 
     def test_nonempty_agrotour_payload_keeps_live_rows_and_offers_workbook_for_no_match(self):
         query = "Gdje ručati u Nevesinju?"
@@ -181,26 +190,14 @@ class TourismChatTests(unittest.TestCase):
                                          "website": "https://example.test/missing"}}],
                     "meta": {"returned": 1, "has_more": False}}
         for path in ("/api/chat", "/api/chat/stream"):
-            started = Event()
-            original_relevance = main._agrotour_relevance
-
-            def check_link(url):
-                started.set()
-                return True
-
-            def check_relevance(*args):
-                self.assertTrue(started.wait(timeout=5))
-                return original_relevance(*args)
-
             with self.subTest(path=path), patch("main.search_agrotour", return_value=upstream), \
-                 patch("main._agrotour_relevance", side_effect=check_relevance), \
-                 patch("link_validation._returns_404", side_effect=check_link) as link_check:
+                 patch("link_validation._returns_404") as link_check:
                 _, outputs = self.call_chat(path, query, calls, answer, has_match=False)
             result = outputs["agrotour"]
             fallback = result.pop("workbook_fallback")
-            link_check.assert_called_once_with("https://example.test/missing")
-            self.assertEqual(result["meta"], upstream["meta"])
-            self.assertEqual(result["data"][0]["record"], {"business_name": "Smještaj u Trebinju"})
+            link_check.assert_not_called()
+            self.assertEqual(result["meta"], {"searched": 1, "returned": 0, "has_more": False})
+            self.assertEqual(result["data"], [])
             self.assertEqual(fallback["source"], "workbook")
             self.assertIn("Restoran Drenovik", {b["name"] for b in fallback["business_details"]})
 
@@ -212,7 +209,26 @@ class TourismChatTests(unittest.TestCase):
         with patch("main.search_agrotour", return_value=upstream), patch("main.workbook_business_fallback") as fallback:
             _, outputs = self.call_chat("/api/chat/stream", query, calls, "Restoran Drenovik.", has_match=True)
         fallback.assert_not_called()
-        self.assertEqual(outputs["agrotour"], upstream)
+        self.assertEqual(outputs["agrotour"]["data"], upstream["data"])
+
+    def test_tool_selection_gets_public_evidence_and_answer_gets_only_selected_rows(self):
+        query = "Šta služi Restoran Varduša u Ljubinju?"
+        calls = [SimpleNamespace(type="function_call", name="search_agrotour", call_id="agrotour", arguments="{}")]
+        live = {"data": [
+            {"id": "10", "resource": "organisations", "record": {
+                "business_name": "Restoran Varduša", "municipality": "Ljubinje",
+                "description_bs": "Služi teletinu ispod peke.",
+                "description_en": "Serves veal.", "created_at": "2026-10-08",
+            }},
+            {"id": "11", "resource": "organisations", "record": {"business_name": "Smještaj"}},
+        ]}
+        with patch("main.search_agrotour", return_value=live):
+            _, outputs = self.call_chat("/api/chat/stream", query, calls, "Teletinu ispod peke.", has_match=True)
+        data = outputs["agrotour"]["data"]
+        self.assertEqual([row["id"] for row in data], ["10"])
+        self.assertEqual(data[0]["record"]["description"], "Služi teletinu ispod peke.")
+        self.assertNotIn("description_en", data[0]["record"])
+        self.assertNotIn("created_at", data[0]["record"])
 
     def test_partial_agrotour_match_only_adds_requested_missing_workbook_business(self):
         query = "Šta služi Varduša u Ljubinju i koje sireve pravi Bajčetić kod Trebinja?"
@@ -225,7 +241,7 @@ class TourismChatTests(unittest.TestCase):
                 has_match=True, unmatched_ids=["business_41", "unknown"],
             )
         fallback = outputs["agrotour"].pop("workbook_fallback")
-        self.assertEqual(outputs["agrotour"], live)
+        self.assertEqual(outputs["agrotour"]["data"], live["data"])
         self.assertEqual([b["id"] for b in fallback["businesses"]], ["business_41"])
         self.assertIn("škripavca", fallback["business_details"][0]["description"])
 
@@ -239,7 +255,7 @@ class TourismChatTests(unittest.TestCase):
                 "/api/chat/stream", query, calls, "Bajčetić pravi škripavac.", has_match=True,
             )
         fallback = outputs["agrotour"].pop("workbook_fallback")
-        self.assertEqual(outputs["agrotour"], live)
+        self.assertEqual(outputs["agrotour"]["data"], live["data"])
         self.assertEqual([b["id"] for b in fallback["businesses"]], ["business_41"])
         self.assertIn("Ljubovo", fallback["business_details"][0]["description"])
         self.assertIn("škripavca", fallback["business_details"][0]["description"])

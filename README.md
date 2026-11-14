@@ -48,9 +48,11 @@ supporting context. Route membership does not imply itinerary order, travel time
 or distance. The partner export still uses the live CSV and WordPress sources.
 
 AgroTour remains the first source for business and package questions. Chat checks
-nonempty results for a match against the question and its context. The answer
-receives the workbook catalogue when AgroTour is unavailable, returns an empty
-list, or has no matching result.
+all fetched pages using the relevant public fields and one description per record.
+The answer receives matching records, with compact evidence from all rows for
+explicit exhaustive lists. It receives workbook entries for missing businesses
+or when the API is unavailable. Azure logs report input, cached input and output
+token counts by stage without logging the text of the requests.
 Workbook listings do not confirm packages, availability, prices, opening hours,
 or bookings. See [refreshing the workbook snapshot](docs/tourism-workbook.md).
 

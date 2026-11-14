@@ -1,0 +1,5 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY main.py agrotour_context.py tourism_workbook.py /app/
+COPY tests/test_tourism_chat.py /app/tests/
+RUN python -m unittest tests.test_tourism_chat tests.test_agrotour_pagination tests.test_link_validation -q
