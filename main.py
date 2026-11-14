@@ -151,6 +151,9 @@ businesses or facts not covered by the live results. If AgroTour is unavailable,
 use the relevant workbook listings and explain that the list covers the catalogue.
 The backend selects entries from all fetched AgroTour pages before sending the
 tool result. Its searched count is the number checked, not the number of matches.
+For exhaustive lists, include the named matched_businesses unless a record's
+details contradict the user's criteria. A matching municipality plus a source
+description that guests are served the requested food counts as offering it.
 Read village names and municipality fields as different levels of location.
 Report a conflict only when the sources give conflicting facts at the same
 level. These rules take precedence over earlier instructions to retry, use
@@ -1075,10 +1078,18 @@ def _prepare_answer(
                                             normalized_words(query)))
                 selected = range(len(live_rows)) if matching is None or exhaustive else matching
                 detailed = set(matching or ())
+                if exhaustive and matching:
+                    tool_result_matches = [
+                        str(row.get("record", {}).get("business_name", "")) for row in (live_rows[i] for i in matching)
+                    ]
+                else:
+                    tool_result_matches = []
                 tool_result = {
                     "data": [business_row(live_rows[i], evidence=i not in detailed) for i in selected],
                     "meta": {"searched": len(live_rows), "returned": len(selected), "has_more": False},
                 }
+                if tool_result_matches:
+                    tool_result["matched_businesses"] = [name for name in tool_result_matches if name]
             if fallback_reason:
                 try:
                     tool_result = {**tool_result, "workbook_fallback": workbook_business_fallback(
