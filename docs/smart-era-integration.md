@@ -1,10 +1,10 @@
 # SMART-HERZ / SMART ERA integracija
 
-Implementirana su dva GET endpointa. KPI koristi stvarni SQL. Tourism preuzima osnovne POI podatke i pripadnost rutama direktno iz šest javnih Google CSV tabova pri svakom pozivu. Provera 21.10.2026. obuhvatila je 281 POI, osam destinacija, pet ruta i 36 događaja; broj zapisa prati promene izvora.
+Partnerski API ima dva GET endpointa. KPI vraća agregate sesija i poziva alata iz SQL-a. Tourism preuzima osnovne POI podatke i pripadnost rutama direktno iz šest javnih Google CSV tabova pri svakom pozivu.
 
 Osnovni podaci destinacija/ruta preuzimaju se kroz javni WordPress `/wp-json/wp/v2/pages`, prema poznatim ID-jevima tih stranica. Za njih nije potreban novi WordPress endpoint niti administrativni pristup. Destinacije izlažu `id`, `name`, `slug`, `url`, `category=destination` i `updated_at` iz WordPress `modified_gmt`, sa UTC vremenskom zonom; rute `id`, `name`, `url` i `poi_ids`. Divi sadržaj nije izdvojen opis destinacije/rute, pa se ne izvozi kao opis. POI podaci dolaze iz kartice `svi POI`: ID, naziv i opština. Liste `poi_ids` dolaze iz pet tabova ruta, sa po jednim istim ID-jem unutar rute. Opisi, koordinate i slike iz drugih tabova nisu deo ovog izvoza.
 
-`integration_tourism.py` pri svakom zahtevu čita svih šest živih CSV tabova i proverava zaglavlja, jedinstvene ID-jeve, nazive, opštine i reference ruta. Glavna kartica određuje ID svakog POI. Ako ruta koristi svoj broj, jedinstveno poklapanje naziva i opštine potvrđuje vezu sa glavnom karticom. Varijanta naziva može da se potvrdi istim glavnim ID-jem, opštinom i jedinstvenom fotografijom.
+`integration_tourism.py` pri svakom zahtevu čita svih šest živih CSV tabova i proverava zaglavlja, jedinstvene ID-jeve, nazive, opštine i reference ruta. Glavna kartica određuje ID svakog POI. Ako ruta koristi svoj broj, jedinstveno poklapanje naziva i opštine potvrđuje vezu sa glavnom karticom. Varijanta naziva može da se potvrdi istim glavnim ID-jem, opštinom i jedinstvenom fotografijom. Za `poi_130` u ruti `route_1699` prihvata se i glavni naziv sa dodatkom „na Trusini“ ako ID i opština odgovaraju glavnoj kartici.
 
 Javni CSV izvori pronađeni su u otvorenoj izvornoj Google tabeli i provereni 20.10.2026. Svih šest URL-ova vraća HTTP 200 bez kolačića, API ključa ili prijavljivanja; ID-jevi, nazivi i veze ruta poklapaju se sa XLSX uvozom. Oblik URL-a je `https://docs.google.com/spreadsheets/d/1V2hZb7GYw0beX2_1-_qV8q4DXk1qVMqU0cPJ2YKAqJc/export?format=csv&gid=<gid>`:
 
@@ -42,7 +42,7 @@ Postojeće promenljive `MSSQL_HOST`, `MSSQL_DB`, `MSSQL_USER` i `MSSQL_PASS` mor
 
 Lokalni base URL je `http://127.0.0.1:8000`. OpenAPI je na `/docs`, gde dugme **Authorize** prima partnerski API ključ preuzet jednokratnim linkom. Gornja promenljiva je interna serverska tajna; ne šalje se partnerima niti služi za autentifikaciju API poziva.
 
-Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Interna tajna čuva se kao Azure secret vezan za `INTEGRATION_KEY_SECRET`. Svakim partnerskim ključem upravlja postojeći AdminApp registar u MSSQL-u. AgroTour ključ nije ključ za ove endpoint-e.
+Produkcioni base URL je `https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io`. Oba endpointa su dostupna u [produkcijskoj Swagger dokumentaciji](https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io/docs). Interna tajna čuva se kao Azure secret vezan za `INTEGRATION_KEY_SECRET`. Svakim partnerskim ključem upravlja postojeći AdminApp registar u MSSQL-u. AgroTour ključ nije ključ za ove endpoint-e.
 
 ## Autentifikacija i konfiguracija
 
@@ -113,7 +113,7 @@ Stare `create/link/revoke --partner` komande su zamenjene AdminApp upravljanjem.
 
 `GET /api/v1/integration/tourism`
 
-Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. Na proveri 20.10.2026. `places` sadrži osam destinacija i 281 POI (ukupno 289), a `routes` pet ruta sa ukupno 481 jedinstvenom vezom ruta–POI. WordPress ID-jevi imaju prefikse `destination_`, `route_` i `event_`; POI-jevi koriste `poi_<ID iz glavne kartice>`. Zaglavlje `X-SmartHerz-Data-Mode: live-csv-live-wordpress` označava žive CSV i WordPress izvore. Nema demo POI zapisa.
+Odgovor sadrži `generated_at` (UTC), `places`, `routes` i `events`. Provera 23.11.2026. vratila je 288 mesta (osam destinacija i 280 POI), pet ruta i 36 događaja. Broj zapisa prati promene izvora. WordPress ID-jevi imaju prefikse `destination_`, `route_` i `event_`, a POI-jevi koriste `poi_<ID iz glavne kartice>`. Zaglavlje `X-SmartHerz-Data-Mode: live-csv-live-wordpress` označava žive CSV i WordPress izvore.
 
 Osnovna polja zapisa su `id`, `name`, opciono `description` i `url`. `places` ima i `category` (`destination` za opštine) i opcioni `slug`. Uvezeni POI-jevi imaju `municipality`, izvorni naziv opštine (za dve planine to je tekst sa dve opštine). `routes[].poi_ids` referiše na ID-jeve u `places`. To je pripadnost tematskoj ruti, ne potvrđen itinerer ili geometrija staze. Događaji imaju dostupne `start_date` i `end_date` u formatu `YYYY-MM-DD`; to su lokalni datumi portala `Europe/Sarajevo`, bez izmišljanja vremena početka. HTML naslova/opisa pretvara se u običan tekst. Nepopunjena tourism polja se izostavljaju.
 
@@ -143,16 +143,18 @@ SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju dogovorenog sku
 
 ## KPI statistika
 
-`GET /api/v1/integration/kpis?date_from=2026-07-01&date_to=2026-07-31`
+`GET /api/v1/integration/kpis?date_from=2026-11-13&date_to=2026-11-22`
 
-Oba datuma su obavezna, striktno `YYYY-MM-DD`, uključiva i sa UTC značenjem. Primer koristi interval `[2026-07-01T00:00:00Z, 2026-08-01T00:00:00Z)`. Neispravni datumi, obrnut raspon i završni datum `9999-12-31` (nema predstavljivog sledećeg dana) vraćaju 422.
+Oba datuma su obavezna, uključiva i u formatu `YYYY-MM-DD`. Primer koristi UTC interval `[2026-11-13T00:00:00Z, 2026-11-23T00:00:00Z)`. Neispravni datumi, obrnut raspon i završni datum `9999-12-31` (nema predstavljivog sledećeg dana) vraćaju 422.
+
+Primer odgovora proveren u produkcijskoj reviziji 23.11.2026.
 
 ```json
 {
-  "date_from": "2026-07-01",
-  "date_to": "2026-07-31",
-  "ai_conversations": 25,
-  "recommendations_generated": 42,
+  "date_from": "2026-11-13",
+  "date_to": "2026-11-22",
+  "ai_conversations": 168,
+  "recommendations_generated": 207,
   "average_session_duration_seconds": null
 }
 ```
@@ -163,17 +165,19 @@ Oba datuma su obavezna, striktno `YYYY-MM-DD`, uključiva i sa UTC značenjem. P
 
 Nakon uspešnog običnog ili streaming odgovora backend upisuje anonimnu sesiju u `chat.Threads` i poruke u `chat.Messages`. Pri sledećim odgovorima ažurira `last_message_at`. Sesija koristi jednosatni rok neaktivnosti i nasumičan SQL ID. `created_at` sesije je vreme prvog uspešnog odgovora u UTC. Istorijski broj poziva obuhvata samo postojeće upise alata.
 
-Pre objave ove verzije izvršiti `sql/005_smartherz_recommendation_count.sql` na SmartHerz bazi. Procedura koristi postojeće zapise i backend nalogu daje samo pravo izvršavanja agregata. Greška upisa se beleži u serverski log i ne prekida uspešan odgovor korisniku. `closed_at` se ne popunjava procenom iz poslednje aktivnosti.
+Migracija `sql/005_smartherz_recommendation_count.sql` primenjena je u produkciji 23.11.2026. Pri postavljanju na novu bazu izvršava se pre objave backenda. Procedura koristi postojeće zapise i backend nalogu daje samo pravo izvršavanja agregata. Greška upisa se beleži u serverski log i ne prekida uspešan odgovor korisniku. `closed_at` se ne popunjava procenom iz poslednje aktivnosti.
 
 Odgovor sadrži samo agregate, bez identifikatora korisnika/sesija i sadržaja razgovora. SQL nedostupnost vraća 503; ne zamenjuje se nulom ili demo podacima.
 
 ## Primeri poziva i provera
 
-Dok server radi, iz PowerShell-a sa partnerskim API ključem preuzetim preko linka:
+Pozivi produkcijskog API-ja iz PowerShell-a koriste partnerski ključ iz promenljive `PARTNER_API_KEY`.
 
 ```powershell
-Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/kpis?date_from=2026-07-01&date_to=2026-07-31' -Headers @{'X-API-Key' = $env:PARTNER_API_KEY}
-Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/integration/tourism' -Headers @{'X-API-Key' = $env:PARTNER_API_KEY}
+$api = 'https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io'
+$headers = @{ 'X-API-Key' = $env:PARTNER_API_KEY }
+Invoke-RestMethod "$api/api/v1/integration/kpis?date_from=2026-11-13&date_to=2026-11-22" -Headers $headers
+Invoke-RestMethod "$api/api/v1/integration/tourism" -Headers $headers
 ```
 
 Podrazumevani testovi koriste lokalne primere za WordPress i SQL odgovore, bez testnih upisa u stvarnu bazu. Razvojne zavisnosti uključuju `httpx` za TestClient.

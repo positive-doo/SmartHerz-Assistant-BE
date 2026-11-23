@@ -10,6 +10,7 @@ Each AgroTour page uses a 20-second socket timeout. A timeout triggers one retry
 of that same page, including a timeout while reading its response body. Other
 errors are not retried; a failed page still discards the partial result set.
 Swagger is available at `/docs` when the service is running.
+See the [SMART ERA partner API guide](docs/smart-era-integration.md) for authentication and response examples.
 
 The `get_weather` assistant tool supplies MET Norway forecasts for the eight
 Eastern Herzegovina municipalities, for today and the next six days. See
@@ -22,7 +23,7 @@ Eastern Herzegovina municipalities, for today and the next six days. See
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
 | `GET` | `/api/v1/integration/tourism` | Live public CSV POIs and route membership, plus WordPress destinations/events; integration API key required. |
-| `GET` | `/api/v1/integration/kpis` | Aggregated recorded SQL sessions for an inclusive UTC date range; integration API key required. |
+| `GET` | `/api/v1/integration/kpis` | Session and recommendation tool-call counts for an inclusive UTC date range. Requires an integration API key. |
 | `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, the Smart ERA workbook catalogue, and WordPress events when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
