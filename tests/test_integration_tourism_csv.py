@@ -70,6 +70,21 @@ class CsvTests(unittest.TestCase):
             result = tourism.fetch_tourism_catalogue()
         self.assertEqual(result["route_poi_ids"]["route_1699"], ["poi_2", "poi_300"])
 
+    def test_trusina_title_variant_keeps_the_master_identity(self):
+        name = "Spomenici na području Nevesinja"
+        master = [self.master[0], ["130", name, "Nevesinje"]]
+        culture = [self.route[0], ["130", f"{name} na Trusini", "Nevesinje"]]
+        empty = [self.route[0]]
+        sources = [master, empty, culture, empty, empty, empty]
+        with patch.object(tourism, "urlopen", side_effect=[response(rows) for rows in sources]):
+            result = tourism.fetch_tourism_catalogue()
+        self.assertEqual(result["route_poi_ids"]["route_1699"], ["poi_130"])
+        self.assertEqual(result["places"][0]["name"], name)
+
+        culture[1][1] = "Drugi spomenik na Trusini"
+        with patch.object(tourism, "urlopen", side_effect=[response(rows) for rows in sources]), self.assertRaises(ValueError):
+            tourism.fetch_tourism_catalogue()
+
     def test_missing_empty_or_duplicate_master_ids_fail(self):
         cases = [[self.master[0]], [*self.master, self.master[1]], [self.master[0], ['', 'No ID','Trebinje']],
                  [self.master[0], ['1','', 'Trebinje']], [self.master[0], ['1','POI','']]]

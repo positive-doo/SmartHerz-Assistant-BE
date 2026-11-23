@@ -97,6 +97,14 @@ def fetch_tourism_catalogue() -> dict:
                   and listed <= _municipalities(places[raw_id]["municipality"])):
                 # Same master ID, municipality and unique image corroborate a title variant.
                 members.append(raw_id)
+            elif (
+                not matches and not local_business
+                and (route_id, raw_id, municipality) == ("route_1699", "poi_130", "nevesinje")
+                and raw_id in places and places[raw_id]["municipality"].casefold() == municipality
+                and name == places[raw_id]["name"].casefold() + " na trusini"
+            ):
+                # The culture route adds the location to this master POI's title.
+                members.append(raw_id)
             elif not matches and (
                 local_business
                 or (raw_id is None and (route_id, name, municipality) == ROUTE_ONLY_POI)
