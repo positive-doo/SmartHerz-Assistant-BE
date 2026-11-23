@@ -40,7 +40,7 @@ class IntegrationTests(unittest.TestCase):
         self.sql_context = MagicMock()
         self.connection = self.sql_context.__enter__.return_value
         self.cursor = self.connection.cursor.return_value
-        self.cursor.fetchone.return_value = (0, None)
+        self.cursor.fetchone.side_effect = [(0, None), (0,)]
 
     @staticmethod
     def event(event_id, **overrides):
@@ -87,19 +87,24 @@ class IntegrationTests(unittest.TestCase):
             sql.assert_not_called()
         self.pages_mock.assert_not_called()
 
-    def test_kpis_use_inclusive_utc_bounds_and_keep_missing_metrics_null(self):
+    def test_kpis_use_inclusive_utc_bounds_for_sessions_and_tool_calls(self):
         with patch("main._sql_connection", return_value=self.sql_context):
             response = self.client.get(self.kpis, headers=self.headers)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {
             "date_from": "2026-10-01", "date_to": "2026-10-07",
-            "ai_conversations": 0, "recommendations_generated": None,
+            "ai_conversations": 0, "recommendations_generated": 0,
             "average_session_duration_seconds": None,
         })
-        args = self.cursor.execute.call_args.args
+        sessions, recommendations = self.cursor.execute.call_args_list
+        args = sessions.args
         self.assertEqual(args[1:], (main.APP_ID, datetime(2026, 10, 1), datetime(2026, 10, 8)))
         self.assertIn("COUNT(DISTINCT thread_id)", args[0])
         self.assertIn("closed_at >= created_at", args[0])
+        self.assertEqual(recommendations.args, (
+            "EXEC chat.SmartHerzRecommendationCount @start = ?, @end = ?",
+            datetime(2026, 10, 1), datetime(2026, 10, 8),
+        ))
 
     def test_single_leap_day_and_year_end_bounds(self):
         for start, end, exclusive_end in [
@@ -107,18 +112,19 @@ class IntegrationTests(unittest.TestCase):
             ("2026-12-31", "2026-12-31", datetime(2027, 1, 1)),
         ]:
             with self.subTest(start=start), patch("main._sql_connection", return_value=self.sql_context):
+                self.cursor.fetchone.side_effect = [(0, None), (0,)]
                 response = self.client.get("/api/v1/integration/kpis", headers=self.headers,
                                            params={"date_from": start, "date_to": end})
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(self.cursor.execute.call_args.args[-1], exclusive_end)
 
-    def test_available_duration_is_returned_without_fabricating_recommendations(self):
-        self.cursor.fetchone.return_value = (4, 125.25)
+    def test_recommendation_count_can_exceed_session_count(self):
+        self.cursor.fetchone.side_effect = [(4, 125.25), (15,)]
         with patch("main._sql_connection", return_value=self.sql_context):
             response = self.client.get(self.kpis, headers=self.headers)
         self.assertEqual(response.json()["ai_conversations"], 4)
         self.assertEqual(response.json()["average_session_duration_seconds"], 125.25)
-        self.assertIsNone(response.json()["recommendations_generated"])
+        self.assertEqual(response.json()["recommendations_generated"], 15)
 
     def test_invalid_missing_reversed_and_out_of_range_dates_do_not_query_sql(self):
         cases = [

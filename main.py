@@ -423,7 +423,13 @@ class KpisResponse(BaseModel):
     date_from: date
     date_to: date
     ai_conversations: int
-    recommendations_generated: int | None = None
+    recommendations_generated: int | None = Field(
+        default=None,
+        description=(
+            "Combined count of recorded search_agrotour and get_tourism_catalogue tool calls "
+            "in completed SmartHerz turns during the inclusive UTC date range."
+        ),
+    )
     average_session_duration_seconds: float | None = None
 
 
@@ -668,7 +674,7 @@ def integration_tourism(response: Response) -> TourismResponse:
     response_model=KpisResponse,
     dependencies=[Depends(_require_integration_key)],
     tags=["SMART ERA integration"],
-    summary="Aggregate recorded SQL sessions for an inclusive UTC date range",
+    summary="Aggregate recorded sessions and recommendation tool calls for an inclusive UTC date range",
     responses={401: {"description": "Invalid API key"}, 503: {"description": "SQL unavailable"}},
 )
 def integration_kpis(
@@ -704,10 +710,13 @@ def integration_kpis(
                 APP_ID, start, end,
             )
             count, duration = cursor.fetchone()
+            cursor.execute("EXEC chat.SmartHerzRecommendationCount @start = ?, @end = ?", start, end)
+            recommendations = cursor.fetchone()[0]
         return KpisResponse(
             date_from=start_date,
             date_to=end_date,
             ai_conversations=int(count),
+            recommendations_generated=int(recommendations),
             average_session_duration_seconds=float(duration) if duration is not None else None,
         )
     except Exception as exc:
