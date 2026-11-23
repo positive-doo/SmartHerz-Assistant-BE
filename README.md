@@ -23,7 +23,7 @@ Eastern Herzegovina municipalities, for today and the next six days. See
 | `GET` | `/healthz` | Liveness check. |
 | `GET` | `/api/status` | Checks backend, SQL Server, Pinecone, and optional OpenAI API connectivity. |
 | `GET` | `/api/v1/integration/tourism` | Live public CSV POIs and route membership, plus WordPress destinations/events; integration API key required. |
-| `GET` | `/api/v1/integration/kpis` | Session and recommendation tool-call counts for an inclusive UTC date range. Requires an integration API key. |
+| `GET` | `/api/v1/integration/kpis` | Session count, average session duration and recommendation tool-call count for an inclusive UTC date range. Requires an integration API key. |
 | `POST` | `/api/chat` | Answers a prompt using AgroTour, knowledge search, the Smart ERA workbook catalogue, and WordPress events when needed. |
 | `POST` | `/api/chat/stream` | Streams cumulative chat updates as server-sent events. |
 | `POST` | `/initialize_session` | Initializes the session cookie expected by the existing frontend flow. |
@@ -99,11 +99,10 @@ existing card flow.
 
 After each completed successful answer, the backend upserts anonymous session
 metadata into the existing `chat.Threads` table. Turns in the same in-memory
-session share one thread ID. Only app ID, a random thread ID, the UTC creation
-time and latest message time are stored; no message text or visitor details.
-This supplies new session counts to the existing KPI endpoint after rollout.
-Recommendation counts and session duration remain unavailable (`null`); the
-last activity time is not treated as a measured session close time.
+session share one thread ID. The KPI endpoint averages the time from the first
+to the last recorded answer across sessions started in the requested period.
+A single-answer session contributes zero seconds. Recorded recommendation
+tool calls are counted separately by their message timestamps.
 
 ## Environment
 

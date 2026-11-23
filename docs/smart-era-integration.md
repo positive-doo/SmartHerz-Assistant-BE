@@ -143,29 +143,29 @@ SMART ERA planira polling jednom dnevno i potpunu sinhronizaciju dogovorenog sku
 
 ## KPI statistika
 
-`GET /api/v1/integration/kpis?date_from=2026-11-13&date_to=2026-11-22`
+`GET /api/v1/integration/kpis?date_from=2026-11-17&date_to=2026-11-22`
 
-Oba datuma su obavezna, uključiva i u formatu `YYYY-MM-DD`. Primer koristi UTC interval `[2026-11-13T00:00:00Z, 2026-11-23T00:00:00Z)`. Neispravni datumi, obrnut raspon i završni datum `9999-12-31` (nema predstavljivog sledećeg dana) vraćaju 422.
+Oba datuma su obavezna, uključiva i u formatu `YYYY-MM-DD`. Primer koristi UTC interval `[2026-11-17T00:00:00Z, 2026-11-23T00:00:00Z)`. Neispravni datumi, obrnut raspon i završni datum `9999-12-31` (nema predstavljivog sledećeg dana) vraćaju 422.
 
 Primer odgovora proveren u produkcijskoj reviziji 23.11.2026.
 
 ```json
 {
-  "date_from": "2026-11-13",
+  "date_from": "2026-11-17",
   "date_to": "2026-11-22",
-  "ai_conversations": 168,
-  "recommendations_generated": 207,
-  "average_session_duration_seconds": null
+  "ai_conversations": 7,
+  "recommendations_generated": 43,
+  "average_session_duration_seconds": 2625.3502857142857
 }
 ```
 
 - `ai_conversations`: broj različitih `thread_id` u `chat.Threads`, za `APP_ID`, čiji `created_at` pripada periodu. Razgovor znači sesiju. Starija `dbo.Threads` se ne sabira.
 - `recommendations_generated`: zbir evidentiranih poziva `search_agrotour` i `get_tourism_catalogue` u završenim odgovorima aplikacije 66. Svaki upisani poziv računa se jednom po UTC datumu poruke, uključujući poziv koji je vratio prazan rezultat. Broj predstavlja aktivnost alata, a može se razlikovati od broja prikazanih preporuka. Ako nema evidentiranih poziva, vrednost je `0`.
-- `average_session_duration_seconds`: prosek validnih `closed_at - created_at` za sesije započete u periodu; `null` kada nema zabeleženih završetaka. Negativna trajanja se ne uključuju. Ne procenjuje se trajanje iz poruka.
+- `average_session_duration_seconds` meri prosečno vreme u sekundama od prvog do poslednjeg evidentiranog odgovora (`last_message_at - created_at`) za sesije započete u periodu. Sesija sa jednim odgovorom doprinosi nula sekundi. Sesije kojima nedostaje vreme poslednjeg odgovora ili imaju poslednji odgovor pre prvog izostavljaju se iz proseka. Ako nijedna sesija nema validna vremena, vrednost je `null`.
 
 Nakon uspešnog običnog ili streaming odgovora backend upisuje anonimnu sesiju u `chat.Threads` i poruke u `chat.Messages`. Pri sledećim odgovorima ažurira `last_message_at`. Sesija koristi jednosatni rok neaktivnosti i nasumičan SQL ID. `created_at` sesije je vreme prvog uspešnog odgovora u UTC. Istorijski broj poziva obuhvata samo postojeće upise alata.
 
-Migracija `sql/005_smartherz_recommendation_count.sql` primenjena je u produkciji 23.11.2026. Pri postavljanju na novu bazu izvršava se pre objave backenda. Procedura koristi postojeće zapise i backend nalogu daje samo pravo izvršavanja agregata. Greška upisa se beleži u serverski log i ne prekida uspešan odgovor korisniku. `closed_at` se ne popunjava procenom iz poslednje aktivnosti.
+Migracija `sql/005_smartherz_recommendation_count.sql` primenjena je u produkciji 23.11.2026. Pri postavljanju na novu bazu izvršava se pre objave backenda. Procedura koristi postojeće zapise i backend nalogu daje samo pravo izvršavanja agregata. Greška upisa se beleži u serverski log i ne prekida uspešan odgovor korisniku.
 
 Odgovor sadrži samo agregate, bez identifikatora korisnika/sesija i sadržaja razgovora. SQL nedostupnost vraća 503; ne zamenjuje se nulom ili demo podacima.
 
@@ -176,7 +176,7 @@ Pozivi produkcijskog API-ja iz PowerShell-a koriste partnerski ključ iz promenl
 ```powershell
 $api = 'https://smartherz-be.livelyflower-1c718338.eastus.azurecontainerapps.io'
 $headers = @{ 'X-API-Key' = $env:PARTNER_API_KEY }
-Invoke-RestMethod "$api/api/v1/integration/kpis?date_from=2026-11-13&date_to=2026-11-22" -Headers $headers
+Invoke-RestMethod "$api/api/v1/integration/kpis?date_from=2026-11-17&date_to=2026-11-22" -Headers $headers
 Invoke-RestMethod "$api/api/v1/integration/tourism" -Headers $headers
 ```
 

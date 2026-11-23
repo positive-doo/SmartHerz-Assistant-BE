@@ -100,7 +100,8 @@ class IntegrationTests(unittest.TestCase):
         args = sessions.args
         self.assertEqual(args[1:], (main.APP_ID, datetime(2026, 10, 1), datetime(2026, 10, 8)))
         self.assertIn("COUNT(DISTINCT thread_id)", args[0])
-        self.assertIn("closed_at >= created_at", args[0])
+        self.assertIn("last_message_at >= created_at", args[0])
+        self.assertIn("DATEDIFF_BIG(millisecond, created_at, last_message_at)", args[0])
         self.assertEqual(recommendations.args, (
             "EXEC chat.SmartHerzRecommendationCount @start = ?, @end = ?",
             datetime(2026, 10, 1), datetime(2026, 10, 8),

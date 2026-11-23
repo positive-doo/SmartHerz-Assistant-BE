@@ -430,7 +430,14 @@ class KpisResponse(BaseModel):
             "in completed SmartHerz turns during the inclusive UTC date range."
         ),
     )
-    average_session_duration_seconds: float | None = None
+    average_session_duration_seconds: float | None = Field(
+        default=None,
+        description=(
+            "Mean seconds between the first and last recorded answers for sessions started "
+            "in the inclusive UTC date range. A single answer contributes zero. "
+            "Null when no session has a valid pair of timestamps."
+        ),
+    )
 
 
 class InitSessionRequest(BaseModel):
@@ -701,8 +708,8 @@ def integration_kpis(
             cursor.execute(
                 """
                 SELECT COUNT(DISTINCT thread_id),
-                    AVG(CASE WHEN closed_at >= created_at
-                        THEN CAST(DATEDIFF_BIG(millisecond, created_at, closed_at) AS float) / 1000.0
+                    AVG(CASE WHEN last_message_at >= created_at
+                        THEN CAST(DATEDIFF_BIG(millisecond, created_at, last_message_at) AS float) / 1000.0
                     END)
                 FROM chat.Threads
                 WHERE app_id = ? AND created_at >= ? AND created_at < ?
