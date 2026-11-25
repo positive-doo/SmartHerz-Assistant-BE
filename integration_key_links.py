@@ -21,7 +21,7 @@ from database import sql_connection
 
 router = APIRouter(include_in_schema=False)
 NO_CACHE = {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"}
-UNAVAILABLE = "Link nije važeći, istekao je ili je već iskorišćen."
+UNAVAILABLE = "This link is invalid, has expired, or has already been used."
 _ACTIVE_KEY_SQL = """k.app_id = 66 AND k.is_active = 1 AND k.revoked_at IS NULL
     AND (k.expires_at IS NULL OR k.expires_at > SYSUTCDATETIME())
     AND EXISTS (SELECT 1 FROM admin.AdminApiKeyScopeAssignments a
@@ -33,7 +33,7 @@ _ACTIVE_KEY_SQL = """k.app_id = 66 AND k.is_active = 1 AND k.revoked_at IS NULL
 def _key_secret() -> bytes:
     secret = os.getenv("INTEGRATION_KEY_SECRET", "")
     if len(secret) < 32:
-        raise HTTPException(503, "Preuzimanje ključa nije podešeno.", headers=NO_CACHE)
+        raise HTTPException(503, "API key retrieval is not configured.", headers=NO_CACHE)
     return secret.encode()
 
 
@@ -142,16 +142,16 @@ def redeem_link(payload: RedeemRequest):
                         cursor.execute("DELETE FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?", token_digest)
                     else:
                         cursor.execute("UPDATE devplay.SmartHerzKeyLinks SET attempts = attempts + 1 WHERE token_digest = ?", token_digest)
-                        status, message = 403, "PIN nije ispravan."
+                        status, message = 403, "Incorrect PIN."
                 else:
                     key = _partner_key(partner[0])
                     if not hmac.compare_digest(key_digest, _digest(key)):
-                        raise HTTPException(503, "Preuzimanje ključa nije dostupno.", headers=NO_CACHE)
+                        raise HTTPException(503, "API key retrieval is unavailable.", headers=NO_CACHE)
                     cursor.execute("DELETE FROM devplay.SmartHerzKeyLinks WHERE token_digest = ?", token_digest)
                     status = 200
             connection.commit()
     except (pyodbc.Error, RuntimeError):
-        raise HTTPException(503, "Preuzimanje ključa nije dostupno.", headers=NO_CACHE) from None
+        raise HTTPException(503, "API key retrieval is unavailable.", headers=NO_CACHE) from None
     if status != 200:
         raise HTTPException(status, message, headers=NO_CACHE)
     return JSONResponse({"api_key": key}, headers=NO_CACHE)
